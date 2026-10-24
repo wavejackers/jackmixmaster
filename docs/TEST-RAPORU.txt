@@ -1,0 +1,77 @@
+JackCore testleri (örnekleme hızı 48000 Hz)
+
+[1] Statik kazanç eğrisi (1 kHz sinüs, T=-20 dB, oran 4:1, sert diz)
+  [OK]    tepe -20 dB: ölçülen GR 0.00 dB, beklenen 0.00 dB
+  [OK]    tepe -14 dB: ölçülen GR 4.47 dB, beklenen 4.50 dB
+  [OK]    tepe -8 dB: ölçülen GR 8.97 dB, beklenen 9.00 dB
+  [OK]    tepe -2 dB: ölçülen GR 13.47 dB, beklenen 13.50 dB
+  [OK]    yumuşak diz (6 dB), seviye=eşik: GR 0.55 dB (teori ~0.56)
+
+[2] Attack / release süresi (63% noktası)
+  [OK]    attack: 63% noktası 20.2 ms (ayar 20 ms)
+  [OK]    release: %37 noktası 211.3 ms (ayar 200 ms)
+
+[3] Otomatik eşik: seviyeden bağımsız aynı sıkıştırma (Genel, SIKIŞTIR %60)
+  [OK]    -12 dB giriş: ortalama GR 5.38 dB (hedef 5.42 dB)
+  [OK]    giriş -12 dB'den -30 dB'ye düşünce: GR 5.38 dB (hedef 5.42 dB)
+  [OK]    SIKIŞTIR %20: GR 1.42 dB (hedef 1.45 dB)
+  [OK]    SIKIŞTIR %100: GR 9.97 dB (hedef 10.00 dB)
+
+[4] Otomatik makeup: giriş ve çıkış gürlüğü eşit kalmalı
+  [OK]    ölçülen gürlük farkı 0.01 dB (hedef 0)
+
+[5] Karışım (parallel) ve SIKIŞTIR=0
+  [OK]    mix=0: çıkış girişle aynı (en büyük fark 0.00e+00)
+  [OK]    mix=%50: kazanç -3.37 dB (beklenen -3.38 dB)
+  [OK]    SIKIŞTIR=0: şeffaf (gürlük farkı 0.000 dB, maks GR 0.000 dB)
+
+[6] Dayanıklılık: aşırı ayarlar, sessizlik, çok küçük/büyük sinyal
+  [OK]    tüm çıkışlar sonlu (NaN/Inf yok)
+  [OK]    çıkış patlamıyor (en büyük genlik 0.9)
+
+[7] Yan zincir filtresi: 40 Hz sinüs
+  [OK]    filtre 10 Hz: ortalama GR 14.67 dB (sıkıştırıyor)
+  [OK]    filtre 200 Hz: ortalama GR 0.00 dB (tetiklenmiyor)
+
+[8] Düşük frekansta kazanç dalgalanması (80 Hz sinüs)
+  [OK]    GR dalgalanması 0.05 dB tepeden tepeye (hedef < 1.5 dB)
+
+[9] Kaynak profilleri ve SIKIŞTIR eşlemesi
+  [OK]    SIKIŞTIR=0 her kaynakta bypass
+  [OK]    SIKIŞTIR arttıkça hedef GR ve oran azalmıyor (tüm kaynaklar)
+  [OK]    oran, attack ve release makul aralıkta (tüm kaynaklar)
+
+[10] Öneri motoru: tek tek kurallar
+  [OK]    her şey iyiyken yalnızca 'harika' mesajı
+  [OK]    sinyal yokken (geçersiz istatistik) sessiz
+  [OK]    basit mod, GR 14 dB: SIKIŞTIR 80 -> 42
+  [OK]    gelişmiş mod: eşik -18 -> -7.9 dB (yukarı)
+  [OK]    çıkış 0 dB üstü: çıkış -2.2 dB'ye kısılıyor
+  [OK]    kick + 1 ms attack: öneri 25 ms
+  [OK]    bas + 10 ms release: uyarı
+  [OK]    vokal + 20:1 oran: limiter uyarısı
+  [OK]    vokal + sert diz: yumuşatma önerisi
+  [OK]    mix bus: yüksek oran + düşük filtre
+  [OK]    manuel makeup ile +5 dB: adil karşılaştırma önerisi
+  [OK]    davul bus, GR 7.6 dB, karışım %100: paralel önerisi
+  [OK]    devreye girmiyorsa: güç artırma önerisi
+  [OK]    SIKIŞTIR çok düşükse (kullanıcı hafif istiyor): ısrar etmez
+  [OK]    birden çok sorun: uyarılar ipuçlarından önce sıralanır (4 öneri)
+
+[11] Kapalı döngü: kötü ayar -> Jack öneriyor -> uygulanınca düzeliyor
+      başlangıç eşik -45 dB
+      tur 0: eşik -45.0 dB -> ortalama GR 24.1 dB
+      tur 1: eşik -24.8 dB -> ortalama GR 8.0 dB
+  [OK]    çok düşük eşik: 1 öneri sonra ortalama GR 8.0 dB (sınır 9.0 dB)
+  [OK]    eşik çok yüksek: tepe GR 0.00 -> 1.81 dB (öneri sonrası, kısa vuruşlarda ~4 dB hedefin altında kalır)
+  [OK]    makeup 12 dB clip: çıkış tepe 11.0 -> -1.0 dB (öneri sonrası)
+      Genel         SIKIŞTIR %100: ortalama GR 6.1 dB, çıkış tepe -0.9 dB
+      Kick          SIKIŞTIR %100: ortalama GR 3.8 dB, çıkış tepe -0.9 dB
+      Bas           SIKIŞTIR %100: ortalama GR 4.6 dB, çıkış tepe -0.9 dB
+      Vokal         SIKIŞTIR %100: ortalama GR 6.8 dB, çıkış tepe -0.9 dB
+      Synth / Lead  SIKIŞTIR %100: ortalama GR 4.4 dB, çıkış tepe -0.9 dB
+      Davul Bus     SIKIŞTIR %100: ortalama GR 2.6 dB, çıkış tepe -0.9 dB
+      Mix Bus       SIKIŞTIR %100: ortalama GR 1.7 dB, çıkış tepe -0.9 dB
+  [OK]    basit modda SIKIŞTIR %100 bile hiçbir kaynakta TooMuch/Clip uyarısı vermiyor (0 sorun)
+
+Sonuç: 42 başarılı, 0 başarısız

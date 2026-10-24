@@ -1,0 +1,49 @@
+name: Jack Compressor derleme
+
+# GitHub'a yüklediğinde (push) ya da "Actions" sekmesinden elle başlattığında çalışır.
+# Windows ve macOS için VST3 üretir; ayrıca çekirdek testlerini çalıştırır.
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  core-tests:
+    name: DSP çekirdek testleri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Derle ve çalıştır
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -o test_core core/test_core.cpp
+          ./test_core
+
+  build-vst3:
+    name: VST3 (${{ matrix.os }})
+    needs: core-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Yapılandır
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            cmake -S plugin -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          else
+            cmake -S plugin -B build -DCMAKE_BUILD_TYPE=Release
+          fi
+
+      - name: Derle
+        run: cmake --build build --config Release --target JackCompressor_VST3 --parallel
+
+      - name: VST3 dosyasını yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: JackCompressor-VST3-${{ matrix.os }}
+          path: build/JackCompressor_artefacts/Release/VST3
+          if-no-files-found: error

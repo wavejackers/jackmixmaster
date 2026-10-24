@@ -1,0 +1,783 @@
+<title>Jack Compressor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Düzen: tek sütun; üstte Jack + konuşma balonu, altında kontroller, en altta gelişmiş panel. */
+:root{
+  --bg:#eef1f5; --panel:#ffffff; --panel2:#e4e9f0; --line:#cfd6e0;
+  --fg:#12171f; --muted:#556070;
+  --jack:#1fa89b; --jack-deep:#137a70; --visor:#0d1218; --eye:#7ff0e2;
+  --hot:#e8590c; --ok:#2f9e44; --warn:#c2410c;
+  --panel-lo:#e9edf3; --hi:rgba(255,255,255,.9); --sh:rgba(30,45,70,.28); --sh2:rgba(30,45,70,.14); --edge:#bcc5d2; --edge-p:#0f6e65; --spot:rgba(31,168,155,.16);
+  --display:'Bricolage Grotesque','Arial Narrow',system-ui,sans-serif;
+  --body:'Figtree',system-ui,sans-serif;
+  --mono:'DM Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1217; --panel:#161c24; --panel2:#1f2733; --line:#2b3544;
+  --fg:#e8edf4; --muted:#93a0b2;
+  --jack:#38d1c2; --jack-deep:#1d8f85; --visor:#06090c; --eye:#8ff5e8;
+  --hot:#ff8a3d; --ok:#5fd07a; --warn:#ff9a5c; --panel-lo:#10151c; --hi:rgba(255,255,255,.07); --sh:rgba(0,0,0,.6); --sh2:rgba(0,0,0,.35); --edge:#0a0e13; --edge-p:#0f6e65; --spot:rgba(56,209,194,.14); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1217; --panel:#161c24; --panel2:#1f2733; --line:#2b3544;
+  --fg:#e8edf4; --muted:#93a0b2;
+  --jack:#38d1c2; --jack-deep:#1d8f85; --visor:#06090c; --eye:#8ff5e8;
+  --hot:#ff8a3d; --ok:#5fd07a; --warn:#ff9a5c; --panel-lo:#10151c; --hi:rgba(255,255,255,.07); --sh:rgba(0,0,0,.6); --sh2:rgba(0,0,0,.35); --edge:#0a0e13; --edge-p:#0f6e65; --spot:rgba(56,209,194,.14); color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px}
+h1{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:-.02em;margin:0}
+header p{margin:0;color:var(--muted);font-size:13px}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel-lo));border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:inset 0 1px 0 var(--hi),0 14px 28px -14px var(--sh),0 2px 5px var(--sh2)}
+.stagecard{background:radial-gradient(120% 90% at 30% 20%,var(--spot),transparent 60%),linear-gradient(180deg,var(--panel),var(--panel-lo))}
+.stage{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:16px;align-items:center}
+canvas{width:100%;max-width:300px;filter:drop-shadow(0 10px 14px var(--sh2));aspect-ratio:1/1.05;display:block;margin:0 auto}
+.talk{display:flex;flex-direction:column;gap:12px;min-width:0}
+.bubble{position:relative;background:linear-gradient(180deg,var(--panel2),var(--panel));box-shadow:inset 0 1px 0 var(--hi),0 8px 16px -8px var(--sh);border-radius:16px;padding:14px 16px;font-size:16px;font-weight:500;min-height:3.6em}
+.bubble::before{content:"";position:absolute;left:-8px;top:28px;width:16px;height:16px;background:var(--panel2);transform:rotate(45deg);border-radius:3px}
+.bubble.alert{outline:2px solid var(--warn)}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+button{font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel2));color:var(--fg);padding:8px 14px;min-height:40px;box-shadow:inset 0 1px 0 var(--hi),0 3px 0 var(--edge),0 6px 8px -4px var(--sh);transition:transform .08s,box-shadow .08s}
+button:active{transform:translateY(3px);box-shadow:inset 0 1px 0 var(--hi),0 0 0 var(--edge),0 1px 2px var(--sh)}
+button:hover{border-color:var(--jack)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--jack);outline-offset:2px}
+button.primary{background:linear-gradient(180deg,color-mix(in srgb,var(--jack) 70%,#fff),var(--jack));border-color:var(--jack-deep);color:#04201d;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 0 var(--edge-p),0 6px 10px -4px var(--sh)}
+button.big{font-family:var(--display);font-weight:700;font-size:17px;padding:10px 20px}
+.transport{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.transport .sp{flex:1}
+.meters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.meter{display:flex;flex-direction:column;gap:4px}
+.meter label,.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.bar{height:14px;border-radius:7px;background:var(--panel2);overflow:hidden;position:relative;box-shadow:inset 0 2px 4px var(--sh)}
+.bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--jack);border-radius:6px}
+.bar.gr i{background:var(--hot);left:auto;right:0}
+.num{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:7px 12px;min-height:38px;border-radius:999px}
+.chip[aria-pressed="true"]{background:var(--jack);border-color:var(--jack-deep);color:#04201d;font-weight:600;transform:translateY(3px);box-shadow:inset 0 2px 4px rgba(0,0,0,.3),0 0 0 var(--edge)}
+.sect{display:flex;flex-direction:column;gap:8px}
+.knobs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ctl .top b{font-weight:600}
+input[type=range]{width:100%;accent-color:var(--jack);height:28px;margin:0}
+.main-amount input[type=range]{height:36px}
+details{border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:600}
+.tog{display:flex;gap:8px;align-items:center}
+.tog input{width:20px;height:20px;accent-color:var(--jack)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.note{font-size:12.5px;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted)}
+.src-line{font-size:13px;color:var(--muted);min-height:1.4em}
+@media (max-width:520px){
+  .stage{grid-template-columns:1fr}
+  .bubble::before{left:calc(50% - 8px);top:-8px}
+  canvas{max-width:260px}
+  h1{font-size:24px}
+}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Jack Compressor</h1>
+    <p>Kompresörü bilmene gerek yok. Jack bilir.</p>
+  </header>
+
+  <section class="card stagecard">
+    <div class="stage">
+      <canvas id="jack" width="600" height="630" role="img" aria-label="Jack: sıkıştırma arttıkça gövdesi ezilen, ruh hali değişen karakter"></canvas>
+      <div class="talk">
+        <div class="bubble" id="bubble" aria-live="polite"></div>
+        <div class="btnrow" id="adviceBtns" hidden>
+          <button class="primary" id="applyBtn" type="button"></button>
+          <button id="noBtn" type="button">Böyle kalsın</button>
+        </div>
+        <div class="src-line" id="srcLine"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card sect">
+    <div class="transport">
+      <button class="primary big" id="playBtn" type="button">▶ Dinle</button>
+      <button id="bypassBtn" type="button" aria-pressed="false">Jack açık</button>
+      <span class="sp"></span>
+      <label class="tools"><span class="note">Kendi sesin:</span><input type="file" id="file" accept="audio/*"></label>
+    </div>
+    <div class="meters">
+      <div class="meter"><label for="mIn">Giriş</label><div class="bar" id="mIn"><i></i></div><span class="num" id="nIn">-∞ dB</span></div>
+      <div class="meter"><label for="mGr">Sıkıştırma</label><div class="bar gr" id="mGr"><i></i></div><span class="num" id="nGr">0.0 dB</span></div>
+      <div class="meter"><label for="mOut">Çıkış</label><div class="bar" id="mOut"><i></i></div><span class="num" id="nOut">-∞ dB</span></div>
+    </div>
+    <p class="note" id="srcNote">Dinlediğin: hazır 124 BPM örnek döngü (kick, clap, hat, bas, synth).</p>
+  </section>
+
+  <section class="card sect" id="simple">
+    <span class="lbl">1 · Bu ne?</span>
+    <div class="chips" id="sources" role="group" aria-label="Kaynak"></div>
+    <div class="ctl main-amount">
+      <div class="top"><b>Sıkıştır</b><span class="num" id="vAmount"></span></div>
+      <input type="range" id="amount" min="0" max="100" step="0.1" aria-label="Sıkıştır">
+      <span class="hint">Yavaş yavaş çevir. Müzik ezilmeye başlayınca Jack söyler.</span>
+    </div>
+    <span class="lbl">2 · Nasıl hissetsin?</span>
+    <div class="chips" id="feels" role="group" aria-label="His"></div>
+    <div class="knobs">
+      <div class="ctl"><div class="top"><b>Karışım</b><span class="num" id="vMix"></span></div><input type="range" id="mix" min="0" max="100" step="0.1" aria-label="Karışım"></div>
+      <div class="ctl"><div class="top"><b>Çıkış</b><span class="num" id="vTrim"></span></div><input type="range" id="trim" min="-24" max="12" step="0.1" aria-label="Çıkış seviyesi"></div>
+    </div>
+  </section>
+
+  <section class="card sect">
+    <div class="tools">
+      <span class="lbl">Jack'i dene</span>
+      <button id="badA" type="button">Çok sert sıkıştır (gelişmiş)</button>
+      <button id="badB" type="button">Eşiği 0 yap (gelişmiş)</button>
+      <button id="badC" type="button">Kick'e hızlı attack (gelişmiş)</button>
+      <button id="reset" type="button">Sıfırla</button>
+    </div>
+    <p class="hint">Yanlış ayar yap, birkaç saniye bekle. Jack ölçer, ne olduğunu söyler, düzeltmeyi önerir.</p>
+    <details id="advDet">
+      <summary>Gelişmiş (bilenler için)</summary>
+      <p class="hint">Burada Jack'in otomatik ayarı kapanır, her şeyi sen belirlersin. Jack yine izler.</p>
+      <div class="tog"><input type="checkbox" id="advanced"><label for="advanced">Gelişmiş modu aç</label></div>
+      <div class="knobs" id="advKnobs" style="margin-top:12px"></div>
+      <div class="tools" style="margin-top:12px">
+        <div class="tog"><input type="checkbox" id="automk"><label for="automk">Otomatik makeup</label></div>
+        <div class="tog"><input type="checkbox" id="progrel"><label for="progrel">Program release</label></div>
+      </div>
+    </details>
+  </section>
+
+  <p class="note">Bu sayfa Jack'in çekirdeğinin JavaScript karşılığıdır, eklenti değildir. Aynı sinyalde C++ çekirdeğiyle ölçülen sıkıştırma, 0,01 dB içinde uyuşuyor. DAW içinde (FL Studio dahil) henüz denenmedi.</p>
+</div>
+
+<script>
+// Jack çekirdeği (JackCore.h'nin JavaScript karşılığı). Aynı matematik, aynı sayılar.
+const Jack = (() => {
+  const dbToLin = db => Math.pow(10, db * 0.05);
+  const linToDb = l => 20 * Math.log10(Math.max(l, 1e-9));
+  const clampf = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const lerpf = (a, b, t) => a + (b - a) * t;
+
+  const Source = { General: 0, Kick: 1, Bass: 2, Vocal: 3, Synth: 4, DrumBus: 5, MixBus: 6, Count: 7 };
+  const Feel = { Soft: 0, Balanced: 1, Punchy: 2 };
+  const PROFILES = [
+    { name: 'Genel',        ratioMax: 4.0, grMax: 10, attackMs: 15, releaseMs: 150, kneeDb: 6,  hpfHz: 60,  goodMaxGr: 8.0 },
+    { name: 'Kick',         ratioMax: 4.0, grMax: 10, attackMs: 25, releaseMs: 80,  kneeDb: 3,  hpfHz: 60,  goodMaxGr: 8.0 },
+    { name: 'Bas',          ratioMax: 4.0, grMax: 9,  attackMs: 20, releaseMs: 120, kneeDb: 6,  hpfHz: 40,  goodMaxGr: 7.0 },
+    { name: 'Vokal',        ratioMax: 4.0, grMax: 10, attackMs: 8,  releaseMs: 120, kneeDb: 8,  hpfHz: 120, goodMaxGr: 8.0 },
+    { name: 'Synth / Lead', ratioMax: 3.5, grMax: 8,  attackMs: 12, releaseMs: 130, kneeDb: 6,  hpfHz: 80,  goodMaxGr: 7.0 },
+    { name: 'Davul Bus',    ratioMax: 4.0, grMax: 8,  attackMs: 30, releaseMs: 100, kneeDb: 4,  hpfHz: 80,  goodMaxGr: 7.0 },
+    { name: 'Mix Bus',      ratioMax: 2.0, grMax: 4,  attackMs: 30, releaseMs: 200, kneeDb: 10, hpfHz: 90,  goodMaxGr: 3.5 },
+  ];
+  const profile = s => PROFILES[Math.min(Math.max(s | 0, 0), Source.Count - 1)];
+
+  const defaultParams = () => ({
+    source: Source.General, amount: 40, feel: Feel.Balanced, mixPercent: 100, outTrimDb: 0,
+    advanced: false, thresholdDb: -18, ratio: 3, attackMs: 10, releaseMs: 120, kneeDb: 6,
+    scHpfHz: 80, makeupDb: 0, autoMakeup: true, programRelease: true,
+  });
+
+  function resolve(p) {
+    const e = { bypassed: false, autoThreshold: true, manualThresholdDb: -18, targetGrDb: 3, ratio: 3,
+      attackMs: 15, releaseMs: 150, kneeDb: 6, hpfHz: 60, autoMakeup: true, manualMakeupDb: 0,
+      programRelease: true, mix: 1, trimDb: 0 };
+    e.mix = clampf(p.mixPercent, 0, 100) * 0.01;
+    e.trimDb = clampf(p.outTrimDb, -24, 12);
+    if (p.advanced) {
+      e.autoThreshold = false;
+      e.manualThresholdDb = clampf(p.thresholdDb, -70, 0);
+      e.ratio = clampf(p.ratio, 1, 100);
+      e.attackMs = clampf(p.attackMs, 0.05, 300);
+      e.releaseMs = clampf(p.releaseMs, 5, 3000);
+      e.kneeDb = clampf(p.kneeDb, 0, 24);
+      e.hpfHz = clampf(p.scHpfHz, 10, 400);
+      e.autoMakeup = p.autoMakeup;
+      e.manualMakeupDb = clampf(p.makeupDb, 0, 24);
+      e.programRelease = p.programRelease;
+      return e;
+    }
+    const sp = profile(p.source);
+    const t = clampf(p.amount, 0, 100) * 0.01;
+    e.bypassed = p.amount < 0.5;
+    e.ratio = lerpf(1.5, sp.ratioMax, Math.pow(t, 0.8));
+    e.targetGrDb = sp.grMax * Math.pow(t, 1.2);
+    let am = 1, rm = 1;
+    if (p.feel === Feel.Soft) { am = 0.6; rm = 1.4; }
+    else if (p.feel === Feel.Punchy) { am = 1.8; rm = 0.7; }
+    e.attackMs = sp.attackMs * am; e.releaseMs = sp.releaseMs * rm;
+    e.kneeDb = sp.kneeDb; e.hpfHz = sp.hpfHz; e.autoMakeup = true; e.programRelease = true;
+    return e;
+  }
+
+  class Biquad {
+    constructor() { this.b0 = 1; this.b1 = 0; this.b2 = 0; this.a1 = 0; this.a2 = 0; this.z1 = 0; this.z2 = 0; }
+    clear() { this.z1 = this.z2 = 0; }
+    designHighpass(f, sr) {
+      const w0 = 6.28318530718 * clampf(f, 5, sr * 0.45) / sr;
+      const cs = Math.cos(w0), al = Math.sin(w0) / (2 * 0.70710678);
+      const a0 = 1 + al;
+      this.b0 = (1 + cs) * 0.5 / a0; this.b1 = -(1 + cs) / a0; this.b2 = this.b0;
+      this.a1 = -2 * cs / a0; this.a2 = (1 - al) / a0;
+    }
+    process(x) {
+      const y = this.b0 * x + this.z1;
+      this.z1 = this.b1 * x - this.a1 * y + this.z2;
+      this.z2 = this.b2 * x - this.a2 * y;
+      return y;
+    }
+  }
+
+  function computeGr(xDb, T, slope, W) {
+    const over = xDb - T;
+    if (W <= 0.01) return over > 0 ? over * slope : 0;
+    if (2 * over < -W) return 0;
+    if (2 * Math.abs(over) <= W) { const t = over + W * 0.5; return slope * t * t / (2 * W); }
+    return over * slope;
+  }
+
+  class Compressor {
+    constructor() {
+      this.fs = 44100; this.params = defaultParams(); this.eff = resolve(this.params);
+      this.hpf = []; for (let i = 0; i < 8; i++) this.hpf.push(new Biquad());
+      this.hpfDesigned = -1; this.stats = { valid: false, inPeakDb: -120, outPeakDb: -120, avgGrDb: 0, maxGrDb: 0, activeRatio: 0, stuckRatio: 0, loudDiffDb: 0 };
+    }
+    prepare(sr) {
+      const fs = this.fs = sr;
+      this.aProgAtt = Math.exp(-1 / (0.020 * fs)); this.aProgRel = Math.exp(-1 / (3.0 * fs));
+      this.aDetRel = Math.exp(-1 / (0.010 * fs)); this.aLoud = Math.exp(-1 / (0.4 * fs));
+      this.aMakeup = Math.exp(-1 / (1.0 * fs)); this.aSmooth = Math.exp(-1 / (0.020 * fs));
+      this.aPeakRel = Math.exp(-1 / (6.0 * fs)); this.windowLen = Math.floor(2 * fs);
+      this.reset(); this.setParams(this.params);
+    }
+    reset() {
+      this.hpf.forEach(b => b.clear());
+      this.detEnv = 0; this.grState = 0; this.progLevelDb = -40; this.msIn = 0; this.msOutPre = 0;
+      this.makeupAutoDb = 0; this.pkInEnv = 0; this.pkPreEnv = 0;
+      this.mixS = this.eff.mix; this.trimS = dbToLin(this.eff.trimDb); this.manualMkS = dbToLin(this.eff.manualMakeupDb);
+      this.curThresholdDb = -20; this.resetWindow();
+      this.stats = { valid: false, inPeakDb: -120, outPeakDb: -120, avgGrDb: 0, maxGrDb: 0, activeRatio: 0, stuckRatio: 0, loudDiffDb: 0 };
+    }
+    setParams(p) {
+      this.params = p; this.eff = resolve(p);
+      this.attCoef = Math.exp(-1 / (this.eff.attackMs * 0.001 * this.fs));
+      if (Math.abs(this.eff.hpfHz - this.hpfDesigned) > 0.01) {
+        this.hpfDesigned = this.eff.hpfHz;
+        this.hpf.forEach(b => b.designHighpass(this.hpfDesigned, this.fs));
+      }
+    }
+    resetWindow() { this.winN = 0; this.activeN = 0; this.over05 = 0; this.over15 = 0; this.sumGrActive = 0; this.maxGr = 0; this.winInPk = 0; this.winOutPk = 0; this.sumSqIn = 0; this.sumSqOut = 0; }
+    accumulate(inPk, outPk, sqIn, sqOut, gr, levelDb) {
+      this.winN++; this.winInPk = Math.max(this.winInPk, inPk); this.winOutPk = Math.max(this.winOutPk, outPk);
+      this.sumSqIn += sqIn; this.sumSqOut += sqOut;
+      if (levelDb > -50) { this.activeN++; this.sumGrActive += gr; if (gr > 0.5) this.over05++; if (gr > 1.5) this.over15++; this.maxGr = Math.max(this.maxGr, gr); }
+      if (this.winN >= this.windowLen) this.finalizeWindow();
+    }
+    finalizeWindow() {
+      if (this.winN === 0) return;
+      const s = { valid: this.activeN >= Math.floor(0.25 * this.fs), inPeakDb: linToDb(this.winInPk), outPeakDb: linToDb(this.winOutPk),
+        avgGrDb: 0, maxGrDb: this.maxGr, activeRatio: 0, stuckRatio: 0, loudDiffDb: 0 };
+      if (this.activeN > 0) { s.avgGrDb = this.sumGrActive / this.activeN; s.activeRatio = this.over05 / this.activeN; s.stuckRatio = this.over15 / this.activeN; }
+      if (this.sumSqIn > 1e-12 && this.sumSqOut > 1e-12) s.loudDiffDb = 10 * Math.log10(this.sumSqOut / this.sumSqIn);
+      this.stats = s; this.resetWindow();
+    }
+    flushStats() { this.finalizeWindow(); }
+    currentGrDb() { return this.grState; }
+    currentThresholdDb() { return this.curThresholdDb; }
+
+    // ch: Float32Array dizisi, yerinde işler
+    process(ch, n) {
+      const numCh = Math.min(ch.length, 8), invCh = 1 / Math.max(numCh, 1), e = this.eff;
+      const slopeDefault = 1 - 1 / e.ratio, mixTarget = e.mix, trimTarget = dbToLin(e.trimDb), mkTarget = dbToLin(e.manualMakeupDb);
+      for (let i = 0; i < n; i++) {
+        this.mixS = mixTarget + this.aSmooth * (this.mixS - mixTarget);
+        this.trimS = trimTarget + this.aSmooth * (this.trimS - trimTarget);
+        this.manualMkS = mkTarget + this.aSmooth * (this.manualMkS - mkTarget);
+        let det = 0, inPk = 0, sqIn = 0;
+        for (let c = 0; c < numCh; c++) {
+          const x = ch[c][i]; inPk = Math.max(inPk, Math.abs(x)); sqIn += x * x;
+          det = Math.max(det, Math.abs(this.hpf[c].process(x)));
+        }
+        sqIn *= invCh;
+        this.detEnv = Math.max(det, this.detEnv * this.aDetRel);
+        const levelDb = linToDb(this.detEnv);
+        if (levelDb > -70) { const a = levelDb > this.progLevelDb ? this.aProgAtt : this.aProgRel; this.progLevelDb = levelDb + a * (this.progLevelDb - levelDb); }
+        let T;
+        if (e.autoThreshold) {
+          if (e.targetGrDb < 0.01) T = 0;
+          else { const over = e.targetGrDb * e.ratio / (e.ratio - 1); T = clampf(this.progLevelDb - over, -70, -1); }
+        } else T = e.manualThresholdDb;
+        this.curThresholdDb = T;
+        const grTarget = e.bypassed ? 0 : computeGr(levelDb, T, slopeDefault, e.kneeDb);
+        let coef;
+        if (grTarget > this.grState) coef = this.attCoef;
+        else {
+          let relMs = e.releaseMs;
+          if (e.programRelease) relMs *= 1 + 1.5 * clampf(this.grState * 0.1, 0, 1);
+          coef = Math.exp(-1 / (relMs * 0.001 * this.fs));
+        }
+        this.grState = grTarget + coef * (this.grState - grTarget);
+        if (this.grState < 1e-4 && grTarget === 0) this.grState = 0;
+        const g = dbToLin(-this.grState);
+        let sqPre = 0, pkPre = 0;
+        for (let c = 0; c < numCh; c++) { const v = ch[c][i] * g; sqPre += v * v; pkPre = Math.max(pkPre, Math.abs(v)); }
+        sqPre *= invCh;
+        this.msIn = sqIn + this.aLoud * (this.msIn - sqIn);
+        this.msOutPre = sqPre + this.aLoud * (this.msOutPre - sqPre);
+        this.pkInEnv = Math.max(inPk, this.pkInEnv * this.aPeakRel);
+        this.pkPreEnv = Math.max(pkPre, this.pkPreEnv * this.aPeakRel);
+        let mkLin;
+        if (e.autoMakeup) {
+          if (this.msIn > 1e-9 && this.msOutPre > 1e-12) {
+            const want = clampf(10 * Math.log10(this.msIn / this.msOutPre), 0, 12);
+            this.makeupAutoDb = want + this.aMakeup * (this.makeupAutoDb - want);
+          }
+          const ceilDb = Math.max(-1, linToDb(this.pkInEnv));
+          const headroom = Math.max(0, ceilDb - linToDb(this.pkPreEnv));
+          mkLin = dbToLin(Math.min(this.makeupAutoDb, headroom));
+        } else mkLin = this.manualMkS;
+        let outPk = 0, sqOut = 0;
+        for (let c = 0; c < numCh; c++) {
+          const dry = ch[c][i], wet = dry * g * mkLin;
+          const y = (dry * (1 - this.mixS) + wet * this.mixS) * this.trimS;
+          ch[c][i] = y; outPk = Math.max(outPk, Math.abs(y)); sqOut += y * y;
+        }
+        sqOut *= invCh;
+        this.accumulate(inPk, outPk, sqIn, sqOut, this.grState, levelDb);
+      }
+    }
+  }
+
+  // ---- öneri motoru
+  const PF = { Amount: 1, Mix: 2, OutTrim: 4, Threshold: 8, Ratio: 16, Attack: 32, Release: 64, Knee: 128, Hpf: 256, AutoMakeup: 512 };
+  function applyPatch(p, patch) {
+    const v = patch.values, m = patch.mask;
+    if (m & PF.Amount) p.amount = v.amount; if (m & PF.Mix) p.mixPercent = v.mixPercent;
+    if (m & PF.OutTrim) p.outTrimDb = v.outTrimDb; if (m & PF.Threshold) p.thresholdDb = v.thresholdDb;
+    if (m & PF.Ratio) p.ratio = v.ratio; if (m & PF.Attack) p.attackMs = v.attackMs;
+    if (m & PF.Release) p.releaseMs = v.releaseMs; if (m & PF.Knee) p.kneeDb = v.kneeDb;
+    if (m & PF.Hpf) p.scHpfHz = v.scHpfHz; if (m & PF.AutoMakeup) p.autoMakeup = v.autoMakeup;
+  }
+  const Sev = { Info: 0, Tip: 1, Warning: 2 };
+  const Rule = { Clip: 1, TooMuch: 2, Idle: 3, FastAttack: 4, FastRelease: 5, LimiterRatio: 6, HardKnee: 7, LoudnessIllusion: 8, Parallel: 9, LowFreq: 10, AllGood: 11 };
+
+  function advise(p, s) {
+    const out = [], sp = profile(p.source), e = resolve(p);
+    const rr = e.ratio / Math.max(e.ratio - 1, 0.05);
+    const add = (id, sev, msg, label, mask, vals) => out.push({ ruleId: id, severity: sev, message: msg, applyLabel: label, patch: { mask, values: vals } });
+    if (p.advanced) {
+      const S = Source;
+      if ((p.source === S.Kick || p.source === S.DrumBus) && p.attackMs < 3)
+        add(Rule.FastAttack, Sev.Warning, 'Çok hızlı yakalıyorum, vuruşun yumruğunu yutuyorum. Biraz yavaşlatalım mı?', 'Evet, yavaşlat', PF.Attack, { attackMs: p.source === S.Kick ? 25 : 30 });
+      if ((p.source === S.Bass || p.source === S.MixBus || p.source === S.DrumBus) && p.releaseMs < 30)
+        add(Rule.FastRelease, Sev.Warning, 'Çok hızlı bırakıyorum, bas titreyip bozulabilir. Biraz daha yavaş bırakayım mı?', 'Evet, yavaşlat', PF.Release, { releaseMs: p.source === S.MixBus ? 200 : 100 });
+      const limitish = p.ratio >= 10 && (p.source === S.Vocal || p.source === S.Synth || p.source === S.MixBus);
+      if (limitish) add(Rule.LimiterRatio, Sev.Tip, 'Bu oran sıkıştırıcıdan çok limiter gibi çalışıyor. Daha doğal bir oran deneyelim mi?', 'Evet, deneyelim', PF.Ratio, { ratio: p.source === S.MixBus ? 2 : 4 });
+      else if (p.source === S.MixBus && p.ratio > 3) add(Rule.LimiterRatio, Sev.Tip, "Master'da oran yüksek. 2'ye 1 çok daha doğal yapışır, deneyelim mi?", 'Evet, deneyelim', PF.Ratio, { ratio: 2 });
+      if (p.source === S.Vocal && p.kneeDb < 1 && p.ratio >= 4)
+        add(Rule.HardKnee, Sev.Tip, 'Bu keskin geçiş vokalde fark edilir. Daha yumuşak bir geçiş deneyelim mi?', 'Evet, yumuşat', PF.Knee, { kneeDb: 8 });
+      if ((p.source === S.MixBus || p.source === S.DrumBus) && p.scHpfHz < 40)
+        add(Rule.LowFreq, Sev.Tip, 'Düşük frekanslar beni gereksiz tetikliyor. Yan zincir filtresini yükseltelim mi?', 'Evet, yükselt', PF.Hpf, { scHpfHz: p.source === S.MixBus ? 90 : 80 });
+    }
+    if (s.valid) {
+      if (s.outPeakDb > -0.1)
+        add(Rule.Clip, Sev.Warning, "Dikkat, çıkış 0 dB'ye çarpıyor, ses bozulabilir. Çıkışı biraz kısayım mı?", 'Evet, kıs', PF.OutTrim, { outTrimDb: clampf(p.outTrimDb - clampf(s.outPeakDb + 1, 1, 12), -24, 12) });
+      const tooMuch = s.avgGrDb > sp.goodMaxGr + 1 || (s.maxGrDb > 20 && s.avgGrDb > sp.goodMaxGr * 0.7);
+      if (tooMuch) {
+        let mask, vals;
+        if (p.advanced) { mask = PF.Threshold; const ex = Math.max(s.avgGrDb - sp.goodMaxGr * 0.8, 1); vals = { thresholdDb: clampf(p.thresholdDb + ex * rr, -70, 0) }; }
+        else { mask = PF.Amount; const rd = sp.goodMaxGr * 0.8 / Math.max(s.avgGrDb, 0.1); vals = { amount: clampf(p.amount * Math.pow(clampf(rd, 0.2, 0.95), 1 / 1.2), 5, 100) }; }
+        add(Rule.TooMuch, Sev.Warning, 'Hmm, çok sert sıkıştırıyoruz, müzik nefes alamıyor. Biraz gevşeteyim mi?', 'Evet, gevşet', mask, vals);
+      }
+      if (s.avgGrDb < 0.3 && s.maxGrDb < 1 && (p.advanced || p.amount >= 20)) {
+        let mask, vals;
+        if (p.advanced) { mask = PF.Threshold; vals = { thresholdDb: clampf(s.inPeakDb - 4 * rr, -70, 0) }; }
+        else { mask = PF.Amount; vals = { amount: clampf(p.amount + 25, 0, 100) }; }
+        add(Rule.Idle, Sev.Tip, 'Neredeyse hiç dokunamıyorum. Biraz daha güç vereyim mi?', 'Evet, artır', mask, vals);
+      }
+      if (p.advanced && !p.autoMakeup && s.loudDiffDb > 2.5)
+        add(Rule.LoudnessIllusion, Sev.Tip, 'Çıkış girişten daha yüksek, bu yüzden daha iyi duyuluyor olabilir. Adil karşılaştırma için seviyeyi eşitleyeyim mi?', 'Evet, eşitle', PF.AutoMakeup, { autoMakeup: true });
+      const parallelSrc = p.source === Source.Kick || p.source === Source.DrumBus || p.source === Source.General;
+      if (parallelSrc && s.avgGrDb > 7 && p.mixPercent >= 99)
+        add(Rule.Parallel, Sev.Tip, 'Epey sıkıştırdık ama karışım %100. Orijinalin yarısını karıştırırsak hem güç hem canlılık kalır. Deneyelim mi?', 'Evet, deneyelim', PF.Mix, { mixPercent: 50 });
+    }
+    out.sort((a, b) => b.severity - a.severity); // Array.sort kararlı
+    if (!out.length && s.valid) out.push({ ruleId: Rule.AllGood, severity: Sev.Info, message: 'Ayarlar harika görünüyor. Aynen devam!', applyLabel: '', patch: { mask: 0, values: {} } });
+    return out;
+  }
+
+  const Mood = { Sleepy: 0, Relaxed: 1, Working: 2, Strained: 3, Overwhelmed: 4, Worried: 5 };
+  function moodFor(gr, sig, adv) {
+    if (!sig) return Mood.Sleepy; if (adv) return Mood.Worried;
+    if (gr < 0.5) return Mood.Relaxed; if (gr < 6) return Mood.Working; if (gr < 12) return Mood.Strained; return Mood.Overwhelmed;
+  }
+  const moodLine = m => ['Zzz... Ses gelince uyanırım.', 'Şu an dinleniyorum. Ses yükselirse devreye girerim.', 'Tam kararında. Ses yerine oturuyor.', 'Biraz zorlanıyorum. Böyle devam edersek nefes alamaz.', 'Çok bastırıyorum! Bir bakalım, ayarı gevşetebilir miyiz?', ''][m];
+  const sourceLine = s => ['Genel mod. Ne olduğunu bilmiyorum ama dengeli giderim.', 'Kick! Vuruşu korurum, sadece kuyruğunu toparlarım.', 'Bas sağlam olsun. Ağır ağır, nazikçe sıkıştırırım.', 'Vokal tatlı olsun. Cümlelerin seviyesini eşitliyorum.', 'Lead\'i yerine oturtalım, ama canlılığı kaybetmeden.', 'Davullar birbirine yapışsın. Bu bana göre iş!', "Master'da incelikle: sadece 1-3 dB. Çok az, ama çok etkili."][s] || '';
+  const greetingLine = () => 'Selam, ben Jack! Önce kaynağı seç, sonra SIKIŞTIR düğmesini yavaş yavaş çevir. Gerisini bana bırak.';
+
+  return { dbToLin, linToDb, clampf, Source, Feel, PROFILES, profile, defaultParams, resolve, Compressor, PF, applyPatch, Sev, Rule, advise, Mood, moodFor, moodLine, sourceLine, greetingLine };
+})();
+
+</script>
+<script>
+(() => {
+'use strict';
+const J = Jack;
+const $ = id => document.getElementById(id);
+const params = J.defaultParams();
+const comp = new J.Compressor();
+let ctx = null, node = null, playing = false, bypass = false;
+let srcBuf = null, srcName = 'örnek';
+let pos = 0, inPk = 0, outPk = 0;
+
+/* ---------- örnek döngü: 124 BPM, 4 bar, kod ile üretilir ---------- */
+function makeLoop(sr) {
+  const bpm = 124, beat = 60 / bpm, len = Math.floor(sr * beat * 16);
+  const L = new Float32Array(len), R = new Float32Array(len);
+  let seed = 12345; const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296) * 2 - 1;
+  const add = (t0, fn, dur, gain, pan = 0) => {
+    const s0 = Math.floor(t0 * sr), n = Math.floor(dur * sr);
+    for (let i = 0; i < n && s0 + i < len; i++) { const v = fn(i / sr, i) * gain; L[s0 + i] += v * (1 - Math.max(pan, 0)); R[s0 + i] += v * (1 + Math.min(pan, 0)); }
+  };
+  for (let b = 0; b < 16; b++) {
+    const t = b * beat;
+    // kick: her vuruşta
+    add(t, tt => Math.sin(2 * Math.PI * (45 * tt + 110 * (1 - Math.exp(-tt * 28)) / 28)) * Math.exp(-tt * 7) , 0.35, 0.95);
+    // clap: 2. ve 4. vuruş
+    if (b % 2 === 1) add(t, (tt, i) => rnd() * Math.exp(-tt * 22) * (0.6 + 0.4 * Math.sin(tt * 700)), 0.25, 0.35);
+    // hat: sekizlik arası
+    let pv = 0; add(t + beat / 2, (tt, i) => { const x = rnd(); const h = x - pv; pv = x; return h * Math.exp(-tt * 55); }, 0.1, 0.3, 0.25);
+    // bas: vuruşlar arası, notalar döner
+    const notes = [55, 55, 65.4, 49];
+    const f = notes[Math.floor(b / 4)];
+    add(t + beat / 2, tt => { const ph = (tt * f) % 1; return (Math.sin(2 * Math.PI * f * tt) * 0.8 + (ph * 2 - 1) * 0.2) * Math.exp(-tt * 4.5); }, beat * 0.45, 0.5);
+    // synth akoru: 2 vuruşta bir
+    if (b % 2 === 0) { const root = [220, 220, 261.6, 196][Math.floor(b / 4)];
+      [1, 1.2, 1.5].forEach((m, k) => add(t, tt => { const ph = (tt * root * m) % 1; return (ph * 2 - 1) * Math.exp(-tt * 3.2); }, beat * 1.8, 0.07, k === 0 ? -0.4 : k === 2 ? 0.4 : 0)); }
+  }
+  let pk = 0; for (let i = 0; i < len; i++) pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i]));
+  const nrm = 0.89 / pk; for (let i = 0; i < len; i++) { L[i] *= nrm; R[i] *= nrm; }  // -1 dBFS'e normalle
+  const buf = ctx.createBuffer(2, len, sr);
+  buf.copyToChannel(L, 0); buf.copyToChannel(R, 1);
+  return buf;
+}
+
+/* ---------- ses ---------- */
+function ensureAudio() {
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  comp.prepare(ctx.sampleRate); comp.setParams(params);
+  srcBuf = makeLoop(ctx.sampleRate);
+  node = ctx.createScriptProcessor(2048, 0, 2);
+  node.onaudioprocess = e => {
+    const outL = e.outputBuffer.getChannelData(0), outR = e.outputBuffer.getChannelData(1), n = outL.length;
+    if (!playing || !srcBuf) { outL.fill(0); outR.fill(0); return; }
+    const a = srcBuf.getChannelData(0), b = srcBuf.numberOfChannels > 1 ? srcBuf.getChannelData(1) : a, len = srcBuf.length;
+    for (let i = 0; i < n; i++) { outL[i] = a[pos]; outR[i] = b[pos]; if (++pos >= len) pos = 0; }
+    let ip = 0; for (let i = 0; i < n; i++) ip = Math.max(ip, Math.abs(outL[i]), Math.abs(outR[i]));
+    inPk = Math.max(ip, inPk * 0.9);
+    if (!bypass) comp.process([outL, outR], n);
+    let op = 0; for (let i = 0; i < n; i++) op = Math.max(op, Math.abs(outL[i]), Math.abs(outR[i]));
+    outPk = Math.max(op, outPk * 0.9);
+  };
+  node.connect(ctx.destination);
+}
+function setPlaying(p) {
+  playing = p; $('playBtn').textContent = p ? '❚❚ Durdur' : '▶ Dinle';
+  if (!p) { inPk = outPk = 0; comp.reset(); }
+}
+$('playBtn').onclick = async () => {
+  ensureAudio(); if (ctx.state === 'suspended') await ctx.resume();
+  setPlaying(!playing); if (playing) { speakUntil.greet = performance.now() + 5000; }
+};
+$('bypassBtn').onclick = () => { bypass = !bypass; const b = $('bypassBtn'); b.setAttribute('aria-pressed', bypass); b.textContent = bypass ? 'Jack kapalı' : 'Jack açık'; if (!bypass) comp.reset(); };
+$('file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  ensureAudio();
+  try {
+    const arr = await f.arrayBuffer(); const buf = await ctx.decodeAudioData(arr);
+    srcBuf = buf; pos = 0; srcName = f.name; comp.reset();
+    $('srcNote').textContent = 'Dinlediğin: ' + f.name + ' (dosya yalnızca bu sayfada kalır, yüklenmez).';
+  } catch (_) { $('srcNote').textContent = 'Bu dosya açılamadı. WAV, MP3 veya M4A dene.'; }
+};
+
+/* ---------- arayüz ---------- */
+const SRC_NAMES = J.PROFILES.map(p => p.name), FEEL_NAMES = ['Yumuşak', 'Dengeli', 'Vurucu'];
+const sourcesEl = $('sources'), feelsEl = $('feels');
+SRC_NAMES.forEach((nm, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = nm; b.onclick = () => { params.source = i; syncUI(); sync(); say('src', J.sourceLine(i), 6000); }; sourcesEl.appendChild(b); });
+FEEL_NAMES.forEach((nm, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = nm; b.onclick = () => { params.feel = i; syncUI(); sync(); }; feelsEl.appendChild(b); });
+
+const fmt = (v, d, u) => v.toFixed(d) + u;
+const basic = [
+  ['amount', 'vAmount', 'amount', v => fmt(v, 0, ' %')], ['mix', 'vMix', 'mixPercent', v => fmt(v, 0, ' %')], ['trim', 'vTrim', 'outTrimDb', v => fmt(v, 1, ' dB')],
+];
+basic.forEach(([id, vid, key, f]) => { $(id).oninput = e => { params[key] = parseFloat(e.target.value); $(vid).textContent = f(params[key]); sync(); }; });
+
+// gelişmiş kaydırıcılar: [anahtar, ad, min, max, log?, biçim]
+const ADV = [
+  ['thresholdDb', 'Threshold', -70, 0, false, v => fmt(v, 1, ' dB')],
+  ['ratio', 'Ratio', 1, 20, true, v => fmt(v, 1, ' : 1')],
+  ['attackMs', 'Attack', 0.1, 200, true, v => fmt(v, v < 10 ? 2 : 1, ' ms')],
+  ['releaseMs', 'Release', 10, 1500, true, v => fmt(v, 0, ' ms')],
+  ['kneeDb', 'Knee', 0, 24, false, v => fmt(v, 1, ' dB')],
+  ['scHpfHz', 'Sidechain HPF', 20, 300, true, v => fmt(v, 0, ' Hz')],
+  ['makeupDb', 'Makeup', 0, 24, false, v => fmt(v, 1, ' dB')],
+];
+const toPos = (a, v) => a[4] ? Math.log(v / a[2]) / Math.log(a[3] / a[2]) : (v - a[2]) / (a[3] - a[2]);
+const fromPos = (a, p) => a[4] ? a[2] * Math.pow(a[3] / a[2], p) : a[2] + p * (a[3] - a[2]);
+ADV.forEach(a => {
+  const d = document.createElement('div'); d.className = 'ctl';
+  d.innerHTML = `<div class="top"><b>${a[1]}</b><span class="num" id="v_${a[0]}"></span></div><input type="range" id="s_${a[0]}" min="0" max="1000" step="1" aria-label="${a[1]}">`;
+  $('advKnobs').appendChild(d);
+  $('s_' + a[0]).oninput = e => { params[a[0]] = fromPos(a, e.target.value / 1000); $('v_' + a[0]).textContent = a[5](params[a[0]]); sync(); };
+});
+$('advanced').onchange = e => { params.advanced = e.target.checked; if (params.advanced) $('advDet').open = true; syncUI(); sync(); };
+$('automk').onchange = e => { params.autoMakeup = e.target.checked; sync(); };
+$('progrel').onchange = e => { params.programRelease = e.target.checked; sync(); };
+
+function syncUI() {
+  [...sourcesEl.children].forEach((b, i) => b.setAttribute('aria-pressed', i === params.source));
+  [...feelsEl.children].forEach((b, i) => b.setAttribute('aria-pressed', i === params.feel));
+  basic.forEach(([id, vid, key, f]) => { $(id).value = params[key]; $(vid).textContent = f(params[key]); });
+  ADV.forEach(a => { $('s_' + a[0]).value = Math.round(toPos(a, params[a[0]]) * 1000); $('v_' + a[0]).textContent = a[5](params[a[0]]); });
+  $('advanced').checked = params.advanced; $('automk').checked = params.autoMakeup; $('progrel').checked = params.programRelease;
+  $('simple').style.opacity = params.advanced ? .55 : 1;
+}
+function sync() { comp.setParams(params); }
+
+/* ---------- Jack'in konuşması ---------- */
+const speakUntil = { greet: performance.now() + 60000 };
+let feedback = null, srcSay = null, current = null; const muted = new Map();
+function say(kind, text, ms) { const o = { text, until: performance.now() + ms }; if (kind === 'fb') feedback = o; else srcSay = o; }
+$('applyBtn').onclick = () => { if (!current) return; J.applyPatch(params, current.patch); syncUI(); sync(); comp.reset(); current = null; say('fb', 'Tamam! Şimdi çok daha doğal.', 4500); };
+$('noBtn').onclick = () => { if (!current) return; muted.set(current.ruleId, performance.now() + 90000); current = null; say('fb', 'Peki, sen bilirsin. İstersen sonra tekrar bakarız.', 4500); };
+let lastAdvice = 0;
+function refreshAdvice(now) {
+  if (now - lastAdvice < 500) return; lastAdvice = now;
+  if (!playing || bypass) { current = null; return; }
+  const list = J.advise(params, comp.stats).filter(a => a.applyLabel && !(muted.get(a.ruleId) > now));
+  current = list[0] || null;
+  allGood = !current && comp.stats.valid && J.advise(params, comp.stats).some(a => a.ruleId === J.Rule.AllGood);
+}
+let allGood = false;
+
+const TEST_BADS = {
+  badA: () => { params.advanced = true; params.source = J.Source.General; params.thresholdDb = -42; params.ratio = 12; params.attackMs = 5; params.mixPercent = 100; params.autoMakeup = true; },
+  badB: () => { params.advanced = true; params.thresholdDb = 0; params.source = J.Source.General; },
+  badC: () => { params.advanced = true; params.source = J.Source.Kick; params.attackMs = 0.3; params.thresholdDb = -22; params.ratio = 6; },
+};
+Object.keys(TEST_BADS).forEach(k => { $(k).onclick = () => { TEST_BADS[k](); muted.clear(); comp.reset(); syncUI(); sync(); if (!playing) $('playBtn').click(); say('src', 'Ayarı değiştirdin. Birkaç saniye dinleyip bakacağım...', 5000); }; });
+$('reset').onclick = () => { Object.assign(params, J.defaultParams()); muted.clear(); comp.reset(); syncUI(); sync(); };
+
+/* ---------- Jack: ışıklandırmalı 3B görünümlü çizim ---------- */
+const cv = $('jack'), g = cv.getContext('2d');
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const rgb = h => { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); };
+const mixc = (a, b, t) => { const A = rgb(a), B = rgb(b); return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',') + ')'; };
+let grSm = 0, mood = J.Mood.Sleepy;
+const pose = { r: { th: .2, b: .1 }, l: { th: .2, b: .1 } };
+const bounce = { y: 0, v: 0 }; let lastIn = 0, ptr = { x: 0, y: 0 }, ptrSm = { x: 0, y: 0 }, mouth = 0;
+cv.parentElement.addEventListener('pointermove', e => { const r = cv.getBoundingClientRect(); ptr.x = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - .5) * 2)); ptr.y = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - .5) * 2)); });
+cv.parentElement.addEventListener('pointerleave', () => { ptr.x = 0; ptr.y = 0; });
+
+// kol hedefleri: th = omuz açısı (0 aşağı, π yukarı), b = dirsek bükümü
+function armTargets(t, inLvl, side) {
+  const s = side === 'r' ? 1 : -1, ph = side === 'r' ? 0 : 1.7;
+  switch (mood) {
+    case J.Mood.Sleepy: return { th: .16, b: .08, front: false };
+    case J.Mood.Relaxed: return { th: .32 + Math.sin(t * .0016 + ph) * .05 + inLvl * .15, b: .25, front: false };
+    case J.Mood.Working: return { th: .75 + inLvl * .55 + Math.sin(t * .006 + ph) * .08, b: .7 + inLvl * .4, front: false };
+    case J.Mood.Strained: return { th: 2.45 + Math.sin(t * .05 + ph) * .04, b: 1.1, front: true };
+    case J.Mood.Overwhelmed: return { th: 2.2 + Math.sin(t * .02 + ph * 2) * .75, b: Math.sin(t * .03 + ph) * .9, front: false };
+    case J.Mood.Worried: return { th: 1.25, b: 2.3, front: true };
+  }
+  return { th: .2, b: .1, front: false };
+}
+
+function limb(p0, p1, w, dark, mid, light) {
+  g.lineCap = 'round';
+  g.strokeStyle = dark; g.lineWidth = w; g.beginPath(); g.moveTo(p0.x, p0.y); g.lineTo(p1.x, p1.y); g.stroke();
+  g.strokeStyle = mid; g.lineWidth = w * .72; g.beginPath(); g.moveTo(p0.x - 2, p0.y - 2); g.lineTo(p1.x - 2, p1.y - 2); g.stroke();
+  g.strokeStyle = light; g.globalAlpha = .55; g.lineWidth = w * .22; g.beginPath(); g.moveTo(p0.x - w * .18, p0.y - w * .2); g.lineTo(p1.x - w * .18, p1.y - w * .2); g.stroke(); g.globalAlpha = 1;
+}
+function sphere(x, y, r, c0, c1, c2) {
+  const gr = g.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r * 1.05);
+  gr.addColorStop(0, c0); gr.addColorStop(.55, c1); gr.addColorStop(1, c2);
+  g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+}
+function drawArm(side, P, k, col, front) {
+  const s = side === 'r' ? 1 : -1, st = pose[side];
+  const sh = { x: P.cx + s * (P.bw / 2 - 6), y: P.top + P.bh * .5 };
+  const th2 = st.th, a2 = th2 + st.b;
+  const U = 70, F = 62;
+  const el = { x: sh.x + s * Math.sin(th2) * U, y: sh.y + Math.cos(th2) * U };
+  const hd = { x: el.x + s * Math.sin(a2) * F, y: el.y + Math.cos(a2) * F };
+  // gölge: kolun gövdeye düşen yumuşak gölgesi
+  limb(sh, el, 26, col.d, col.m, col.l); limb(el, hd, 23, col.d, col.m, col.l);
+  sphere(el.x, el.y, 15, col.m, col.d, col.d);
+  const hr = front ? 25 : 22;
+  g.save(); g.shadowColor = 'rgba(0,0,0,.28)'; g.shadowBlur = 10; g.shadowOffsetY = 4;
+  sphere(hd.x, hd.y, hr, col.hl, col.hm, col.hd); g.restore();
+  return hd;
+}
+
+function drawJack(t, inLvl) {
+  const W = cv.width, H = cv.height; g.clearRect(0, 0, W, H);
+  const body = css('--jack'), deep = css('--jack-deep'), visor = css('--visor'), eye = css('--eye'), hot = css('--hot'), fg = css('--fg'), bgc = css('--panel');
+  ptrSm.x += (ptr.x - ptrSm.x) * .12; ptrSm.y += (ptr.y - ptrSm.y) * .12;
+  // vuruşa tepki: giriş aniden yükselince gövde zıplar
+  if (inLvl > lastIn * 1.35 + .05) bounce.v -= 2.2 + inLvl * 3;
+  lastIn = lastIn * .9 + inLvl * .1; lastIn = Math.max(lastIn, inLvl * .6);
+  bounce.v += (0 - bounce.y) * .12; bounce.v *= .8; bounce.y += bounce.v;
+  mouth += (inLvl - mouth) * .3;
+  const sq = Math.min(grSm, 20), sy = 1 - sq * .022, sx = 1 + sq * .016;
+  const cx = W / 2 + ptrSm.x * 8, floor = H - 52, bh = 262 * sy, bw = 250 * sx;
+  const top = floor - bh + bounce.y - (mood === J.Mood.Overwhelmed ? Math.abs(Math.sin(t * .02)) * 10 : 0);
+  const shake = mood === J.Mood.Overwhelmed ? Math.sin(t * .045) * 3 : mood === J.Mood.Strained ? Math.sin(t * .09) * 1.2 : 0;
+  const P = { cx: cx + shake, top, bw, bh };
+  const dark = mixc(deep, '#000000', .35), lite = mixc(body, '#ffffff', .55);
+  const colB = { d: dark, m: deep, l: lite, hl: mixc(body, '#ffffff', .75), hm: mixc(body, '#ffffff', .25), hd: deep };
+
+  // zemin: yumuşak gölge ve ışık halkası
+  const lift = Math.max(0, -bounce.y);
+  let gs = g.createRadialGradient(cx, floor + 12, 4, cx, floor + 12, bw * .62);
+  gs.addColorStop(0, 'rgba(0,0,0,.38)'); gs.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gs; g.save(); g.translate(cx, floor + 12); g.scale(1, .16); g.translate(-cx, -floor - 12);
+  g.beginPath(); g.arc(cx, floor + 12, bw * (.62 - lift * .004), 0, 7); g.fill(); g.restore();
+  // GR halkası zeminde
+  g.save(); g.translate(cx, floor + 14); g.scale(1, .17); g.lineWidth = 16; g.strokeStyle = fg; g.globalAlpha = .08;
+  g.beginPath(); g.arc(0, 0, bw * .66, 0, 7); g.stroke(); g.globalAlpha = 1; g.strokeStyle = hot; g.lineCap = 'round';
+  g.beginPath(); g.arc(0, 0, bw * .66, -Math.PI / 2, -Math.PI / 2 + Math.min(1, grSm / 20) * 6.283); g.stroke(); g.restore();
+
+  // ayaklar
+  [-1, 1].forEach(s => { sphere(cx + s * bw * .22, floor - 4, 30, mixc(body, '#ffffff', .2), deep, dark); });
+
+  // kolları hesapla
+  const tg = { r: armTargets(t, inLvl, 'r'), l: armTargets(t, inLvl, 'l') };
+  ['r', 'l'].forEach(k => { pose[k].th += (tg[k].th - pose[k].th) * .14; pose[k].b += (tg[k].b - pose[k].b) * .14; });
+  const front = tg.r.front;
+  if (!front) { drawArm('l', P, 0, colB, false); drawArm('r', P, 0, colB, false); }
+
+  // kulaklık bandı (arka)
+  g.save(); g.translate(cx + shake, 0);
+  g.lineCap = 'round'; g.strokeStyle = dark; g.lineWidth = 17; g.beginPath(); g.arc(0, top + bh * .4, bw * .5 + 8, Math.PI * 1.07, Math.PI * 1.93); g.stroke();
+  g.strokeStyle = deep; g.lineWidth = 11; g.beginPath(); g.arc(0, top + bh * .4 - 1, bw * .5 + 8, Math.PI * 1.07, Math.PI * 1.93); g.stroke();
+  g.strokeStyle = lite; g.globalAlpha = .5; g.lineWidth = 3; g.beginPath(); g.arc(-2, top + bh * .4 - 4, bw * .5 + 8, Math.PI * 1.15, Math.PI * 1.6); g.stroke(); g.globalAlpha = 1;
+  g.restore();
+
+  // gövde: radyal ışık + kenar ışığı + zemin yansıması
+  g.save(); g.translate(shake, 0);
+  const bx = cx - bw / 2;
+  g.beginPath(); g.roundRect(bx, top, bw, bh, 66);
+  let gb = g.createRadialGradient(cx - bw * .22, top + bh * .18, 8, cx, top + bh * .55, bw * .78);
+  gb.addColorStop(0, mixc(body, '#ffffff', .55)); gb.addColorStop(.35, body); gb.addColorStop(1, mixc(deep, '#000000', .25));
+  g.fillStyle = gb; g.fill();
+  g.save(); g.clip();
+  let ao = g.createLinearGradient(0, top + bh * .6, 0, top + bh); ao.addColorStop(0, 'rgba(0,0,0,0)'); ao.addColorStop(1, 'rgba(0,0,0,.3)');
+  g.fillStyle = ao; g.fillRect(bx, top, bw, bh);
+  let rim = g.createLinearGradient(bx + bw, 0, bx + bw - 46, 0); rim.addColorStop(0, hot); rim.addColorStop(1, 'rgba(255,255,255,0)');
+  g.globalAlpha = .35; g.fillStyle = rim; g.fillRect(bx + bw - 46, top, 46, bh); g.globalAlpha = 1;
+  // göbek paneli (derin kabartma) ve GR ledleri
+  const py = top + bh * .66, ph = bh * .22;
+  g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.roundRect(cx - bw * .3, py, bw * .6, ph, 14); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.roundRect(cx - bw * .3, py + ph - 2, bw * .6, 3, 2); g.fill();
+  for (let k = 0; k < 10; k++) { const on = grSm > k * 2; g.fillStyle = on ? hot : 'rgba(255,255,255,.16)'; if (on) { g.shadowColor = hot; g.shadowBlur = 10; } g.beginPath(); g.roundRect(cx - bw * .27 + k * (bw * .54 / 10), py + ph * .3, bw * .54 / 10 - 5, ph * .4, 3); g.fill(); g.shadowBlur = 0; }
+  // parlak yansıma
+  let sp = g.createLinearGradient(bx, top, bx + bw * .5, top + bh * .5); sp.addColorStop(0, 'rgba(255,255,255,.38)'); sp.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = sp; g.beginPath(); g.ellipse(cx - bw * .22, top + bh * .2, bw * .16, bh * .09, -.5, 0, 7); g.fill();
+  g.restore(); g.restore();
+
+  // anten
+  const wob = Math.sin(t * .012) * (2 + inLvl * 16), ax = cx + shake + bw * .17, ay = top + 10;
+  g.strokeStyle = dark; g.lineWidth = 7; g.lineCap = 'round'; g.beginPath(); g.moveTo(ax, ay); g.quadraticCurveTo(ax + wob * .2, ay - 30, ax + wob * .4, ay - 52); g.stroke();
+  const tx = ax + wob * .4, ty = ay - 56, tr = 11 + inLvl * 7;
+  let glow = g.createRadialGradient(tx, ty, 2, tx, ty, 40 + inLvl * 40); glow.addColorStop(0, hot); glow.addColorStop(1, 'rgba(255,138,61,0)');
+  g.globalAlpha = .25 + inLvl * .5; g.fillStyle = glow; g.beginPath(); g.arc(tx, ty, 40 + inLvl * 40, 0, 7); g.fill(); g.globalAlpha = 1;
+  sphere(tx, ty, tr, '#ffd9bd', hot, mixc(hot, '#000000', .45));
+  g.strokeStyle = body; g.lineWidth = 3; for (let k = 1; k <= 2; k++) { g.globalAlpha = .7 - k * .2 - (1 - Math.min(1, inLvl * 2)) * .3; g.beginPath(); g.arc(tx, ty, 18 + k * 12 + inLvl * 14, -2.4, -.74); g.stroke(); } g.globalAlpha = 1;
+
+  // kulak kapları (silindir görünümü)
+  [-1, 1].forEach(s => {
+    const x = cx + shake + s * (bw / 2 + 2), y = top + bh * .42, w = 34, h = bh * .3;
+    let gc = g.createLinearGradient(x - w / 2, 0, x + w / 2, 0); gc.addColorStop(0, mixc(deep, '#ffffff', s < 0 ? .3 : 0)); gc.addColorStop(.5, deep); gc.addColorStop(1, mixc(deep, '#000000', .5));
+    g.fillStyle = gc; g.beginPath(); g.roundRect(x - w / 2, y - h / 2, w, h, 15); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.14)'; g.beginPath(); g.roundRect(x - w / 2 + 4, y - h / 2 + 5, 6, h - 10, 3); g.fill();
+  });
+
+  // siperlik: camsı, derin
+  const vw = bw * .74, vh = bh * .36, vx = cx + shake - vw / 2 + ptrSm.x * 5, vy = top + bh * .22 + ptrSm.y * 3;
+  g.save(); g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 12; g.shadowOffsetY = 5;
+  let gv = g.createLinearGradient(0, vy, 0, vy + vh); gv.addColorStop(0, mixc(visor, '#ffffff', .12)); gv.addColorStop(.5, visor); gv.addColorStop(1, mixc(visor, '#000000', .3));
+  g.fillStyle = gv; g.beginPath(); g.roundRect(vx, vy, vw, vh, 30); g.fill(); g.restore();
+  g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = 2; g.beginPath(); g.roundRect(vx + 1, vy + 1, vw - 2, vh - 2, 29); g.stroke();
+  // yüz
+  g.save(); g.beginPath(); g.roundRect(vx, vy, vw, vh, 30); g.clip();
+  const lx = ptrSm.x * 7, ly = ptrSm.y * 4;
+  const ey = vy + vh * .45 + ly, ex = vw * .22;
+  g.strokeStyle = eye; g.fillStyle = eye; g.lineWidth = 8; g.lineCap = 'round'; g.shadowColor = eye; g.shadowBlur = 14;
+  const mx = vx + vw / 2 + lx;
+  const eyes = fn => [-1, 1].forEach(s => fn(mx + s * ex, ey, s));
+  const blink = (t % 4300) < 130;
+  switch (mood) {
+    case J.Mood.Sleepy: eyes((x, y) => { g.beginPath(); g.moveTo(x - 17, y + 3); g.lineTo(x + 17, y + 3); g.stroke(); });
+      g.font = '700 24px Figtree,sans-serif'; g.fillText('z', vx + vw - 30, vy + 26 + Math.sin(t * .003) * 3); g.font = '700 16px Figtree,sans-serif'; g.fillText('z', vx + vw - 50, vy + 40 + Math.sin(t * .003 + 1) * 3); break;
+    case J.Mood.Relaxed: eyes((x, y) => { g.beginPath(); g.arc(x, y + 8, 16, Math.PI * 1.12, Math.PI * 1.88); g.stroke(); }); break;
+    case J.Mood.Working: eyes((x, y) => { if (blink) { g.beginPath(); g.moveTo(x - 15, y); g.lineTo(x + 15, y); g.stroke(); } else { g.beginPath(); g.ellipse(x, y, 13 + inLvl * 5, 14 + inLvl * 7, 0, 0, 7); g.fill(); } }); break;
+    case J.Mood.Strained: eyes((x, y, s) => { g.beginPath(); g.moveTo(x - 16 * s, y - 13); g.lineTo(x + 16 * s, y); g.lineTo(x - 16 * s, y + 13); g.stroke(); }); break;
+    case J.Mood.Overwhelmed: eyes((x, y) => { g.beginPath(); g.moveTo(x - 14, y - 14); g.lineTo(x + 14, y + 14); g.moveTo(x + 14, y - 14); g.lineTo(x - 14, y + 14); g.stroke(); }); break;
+    case J.Mood.Worried: eyes((x, y, s) => { g.beginPath(); g.arc(x, y + 5, 12, 0, 7); g.fill(); g.beginPath(); g.moveTo(x - 20 * s, y - 14); g.lineTo(x + 14 * s, y - 24); g.stroke(); }); break;
+  }
+  // ağız: sese göre açılır (şarkı söyler gibi)
+  g.shadowBlur = 8; g.lineWidth = 6; const my = vy + vh * .82 + ly * .5;
+  if (mood === J.Mood.Overwhelmed) { g.beginPath(); g.ellipse(mx, my, 12, 9, 0, 0, 7); g.stroke(); }
+  else if (mood === J.Mood.Strained) { g.beginPath(); g.moveTo(mx - 18, my); for (let k = 1; k <= 4; k++) g.lineTo(mx - 18 + k * 9, my + (k % 2 ? -4 : 4)); g.stroke(); }
+  else if (mood === J.Mood.Worried) { g.beginPath(); g.arc(mx, my + 8, 14, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); }
+  else if (mood === J.Mood.Sleepy) { g.beginPath(); g.moveTo(mx - 8, my); g.lineTo(mx + 8, my); g.stroke(); }
+  else { const o = Math.min(1, mouth * 2.2); g.beginPath(); if (o > .12) { g.ellipse(mx, my, 12 + o * 4, 4 + o * 9, 0, 0, 7); g.fill(); } else { g.arc(mx, my - 6, 15, Math.PI * .15, Math.PI * .85); g.stroke(); } }
+  g.restore(); g.shadowBlur = 0;
+  // cam yansıması
+  let gl = g.createLinearGradient(vx, vy, vx + vw * .6, vy + vh); gl.addColorStop(0, 'rgba(255,255,255,.22)'); gl.addColorStop(.35, 'rgba(255,255,255,0)');
+  g.fillStyle = gl; g.beginPath(); g.roundRect(vx + 4, vy + 4, vw - 8, vh * .5, 26); g.fill();
+
+  // ön planda kollar (eller yüzün önünde / başın üstünde)
+  if (front) { drawArm('l', P, 0, colB, true); drawArm('r', P, 0, colB, true); }
+}
+
+/* ---------- ana döngü ---------- */
+const bar = (el, p) => { el.firstElementChild.style.width = Math.max(0, Math.min(1, p)) * 100 + '%'; };
+const dB = v => v < 1e-5 ? '-∞ dB' : (J.linToDb(v)).toFixed(1) + ' dB';
+function frame(now) {
+  const gr = playing && !bypass ? comp.currentGrDb() : 0;
+  grSm += (gr - grSm) * 0.25;
+  const sig = playing && J.linToDb(inPk) > -60;
+  refreshAdvice(now);
+  mood = J.moodFor(grSm, sig, !!current);
+  // balon metni
+  let text;
+  if (feedback && feedback.until > now) text = feedback.text;
+  else if (current) text = current.message;
+  else if (srcSay && srcSay.until > now) text = srcSay.text;
+  else if (!playing && now < speakUntil.greet) text = J.greetingLine();
+  else if (bypass && playing) text = 'Ben kapalıyım. Açınca farkı duyarsın.';
+  else if (allGood) text = 'Ayarlar harika görünüyor. Aynen devam!';
+  else text = J.moodLine(mood) || '...';
+  const bub = $('bubble'); if (bub.textContent !== text) bub.textContent = text;
+  bub.classList.toggle('alert', !!current && current.severity === J.Sev.Warning);
+  $('adviceBtns').hidden = !current;
+  if (current) $('applyBtn').textContent = current.applyLabel;
+  // sayaçlar
+  bar($('mIn'), (J.linToDb(inPk) + 60) / 60); bar($('mOut'), (J.linToDb(outPk) + 60) / 60); bar($('mGr'), grSm / 20);
+  $('nIn').textContent = dB(inPk); $('nOut').textContent = dB(outPk); $('nGr').textContent = grSm.toFixed(1) + ' dB';
+  drawJack(now, Math.min(1, inPk * 1.1));
+  requestAnimationFrame(frame);
+}
+syncUI(); comp.prepare(44100); comp.setParams(params);
+if (!CanvasRenderingContext2D.prototype.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); this.moveTo(x + r, y); this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r); this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r); this.closePath(); };
+requestAnimationFrame(frame);
+})();
+</script>
