@@ -8,29 +8,62 @@ using juce::AudioParameterFloat;
 using juce::NormalisableRange;
 using juce::ParameterID;
 
+namespace
+{
+juce::PropertiesFile::Options langFileOptions()
+{
+    juce::PropertiesFile::Options o;
+    o.applicationName = "JackCompressor";
+    o.folderName = "Wavejackers";
+    o.filenameSuffix = ".settings";
+    o.osxLibrarySubFolder = "Application Support";
+    return o;
+}
+
+int savedDefaultLang()
+{
+    juce::PropertiesFile pf (langFileOptions());
+    return juce::jlimit (0, static_cast<int> (jack::Lang::Count) - 1, pf.getIntValue ("lang", 0));
+}
+} // namespace
+
+jack::Lang JackAudioProcessor::getLanguage() const
+{
+    const int v = apvts.state.getProperty ("lang", savedDefaultLang());
+    return static_cast<jack::Lang> (juce::jlimit (0, static_cast<int> (jack::Lang::Count) - 1, v));
+}
+
+void JackAudioProcessor::setLanguage (jack::Lang l)
+{
+    apvts.state.setProperty ("lang", static_cast<int> (l), nullptr);
+    juce::PropertiesFile pf (langFileOptions());
+    pf.setValue ("lang", static_cast<int> (l));
+    pf.saveIfNeeded();
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout JackAudioProcessor::createLayout()
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> p;
 
     juce::StringArray sources;
     for (int i = 0; i < static_cast<int> (jack::Source::Count); ++i)
-        sources.add (juce::String::fromUTF8 (jack::profile (static_cast<jack::Source> (i)).name));
+        sources.add (juce::String::fromUTF8 (jack::profile (static_cast<jack::Source> (i)).name));  // İngilizce: DAW'da sabit
 
     juce::StringArray feels;
-    feels.add (juce::String::fromUTF8 ("Yumuşak"));
-    feels.add ("Dengeli");
+    feels.add ("Soft");
+    feels.add ("Balanced");
     feels.add ("Vurucu");
 
-    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "source", 1 }, "Kaynak", sources, 0));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "source", 1 }, "Source", sources, 0));
     p.push_back (std::make_unique<AudioParameterFloat> (
-        ParameterID { "amount", 1 }, juce::String::fromUTF8 ("Sıkıştır"), NormalisableRange<float> (0.0f, 100.0f, 0.1f), 40.0f));
-    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "feel", 1 }, "His", feels, 1));
+        ParameterID { "amount", 1 }, "Squeeze", NormalisableRange<float> (0.0f, 100.0f, 0.1f), 40.0f));
+    p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "feel", 1 }, "Feel", feels, 1));
     p.push_back (std::make_unique<AudioParameterFloat> (
-        ParameterID { "mix", 1 }, juce::String::fromUTF8 ("Karışım"), NormalisableRange<float> (0.0f, 100.0f, 0.1f), 100.0f));
+        ParameterID { "mix", 1 }, "Mix", NormalisableRange<float> (0.0f, 100.0f, 0.1f), 100.0f));
     p.push_back (std::make_unique<AudioParameterFloat> (
-        ParameterID { "trim", 1 }, juce::String::fromUTF8 ("Çıkış"), NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f));
+        ParameterID { "trim", 1 }, "Output", NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f));
 
-    p.push_back (std::make_unique<AudioParameterBool> (ParameterID { "advanced", 1 }, juce::String::fromUTF8 ("Gelişmiş"), false));
+    p.push_back (std::make_unique<AudioParameterBool> (ParameterID { "advanced", 1 }, "Advanced", false));
     p.push_back (std::make_unique<AudioParameterFloat> (
         ParameterID { "threshold", 1 }, "Threshold", NormalisableRange<float> (-70.0f, 0.0f, 0.1f), -18.0f));
     p.push_back (std::make_unique<AudioParameterFloat> (

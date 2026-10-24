@@ -27,12 +27,19 @@ inline float linToDb(float lin) { return 20.0f * std::log10(std::max(lin, 1.0e-9
 inline float clampf(float v, float lo, float hi) { return std::min(hi, std::max(lo, v)); }
 inline float lerpf(float a, float b, float t) { return a + (b - a) * t; }
 
+// ---------------------------------------------------------------- dil
+// Varsayılan dil İngilizcedir. Yeni dil eklemek için: Lang'e ekle, Tx'e alan ekle, pick()'e dal ekle.
+enum class Lang : int { En = 0, Tr, Count };
+struct Tx { const char* en; const char* tr; };
+inline const char* pick(Lang l, const Tx& t) { return l == Lang::Tr ? t.tr : t.en; }
+
 // ---------------------------------------------------------------- kaynaklar
 enum class Source : int { General = 0, Kick, Bass, Vocal, Synth, DrumBus, MixBus, Count };
 enum class Feel : int { Soft = 0, Balanced, Punchy };
 
 struct SourceProfile {
-    const char* name;
+    const char* name;    // İngilizce (parametre adları ve varsayılan arayüz)
+    const char* nameTr;  // Türkçe
     float ratioMax;   // Amount %100 iken oran
     float grMax;      // Amount %100 iken hedef gain reduction (dB)
     float attackMs;
@@ -42,20 +49,25 @@ struct SourceProfile {
     float goodMaxGr;  // öneri motoru için "sağlıklı" ortalama GR üst sınırı (dB)
 };
 
+inline const SourceProfile& profile(Source s);
+inline const char* sourceName(Source s, Lang l);
+
 inline const SourceProfile& profile(Source s) {
     static const SourceProfile kProfiles[] = {
-        //  ad            ratioMax grMax att   rel   knee  hpf   goodMaxGr
-        {"Genel",         4.0f,   10.0f, 15.f, 150.f, 6.f,  60.f, 8.0f},
-        {"Kick",          4.0f,   10.0f, 25.f,  80.f, 3.f,  60.f, 8.0f},
-        {"Bas",           4.0f,    9.0f, 20.f, 120.f, 6.f,  40.f, 7.0f},
-        {"Vokal",         4.0f,   10.0f,  8.f, 120.f, 8.f, 120.f, 8.0f},
-        {"Synth / Lead",  3.5f,    8.0f, 12.f, 130.f, 6.f,  80.f, 7.0f},
-        {"Davul Bus",     4.0f,    8.0f, 30.f, 100.f, 4.f,  80.f, 7.0f},
-        {"Mix Bus",       2.0f,    4.0f, 30.f, 200.f, 10.f, 90.f, 3.5f},
+        //  ad / adTr     ratioMax grMax att   rel   knee  hpf   goodMaxGr
+        {"General", "Genel",   4.0f,   10.0f, 15.f, 150.f, 6.f,  60.f, 8.0f},
+        {"Kick",    "Kick",    4.0f,   10.0f, 25.f,  80.f, 3.f,  60.f, 8.0f},
+        {"Bass",    "Bas",     4.0f,    9.0f, 20.f, 120.f, 6.f,  40.f, 7.0f},
+        {"Vocal",   "Vokal",   4.0f,   10.0f,  8.f, 120.f, 8.f, 120.f, 8.0f},
+        {"Synth / Lead", "Synth / Lead", 3.5f,    8.0f, 12.f, 130.f, 6.f,  80.f, 7.0f},
+        {"Drum Bus", "Davul Bus", 4.0f,    8.0f, 30.f, 100.f, 4.f,  80.f, 7.0f},
+        {"Mix Bus", "Mix Bus", 2.0f,    4.0f, 30.f, 200.f, 10.f, 90.f, 3.5f},
     };
     int i = std::min(std::max(static_cast<int>(s), 0), static_cast<int>(Source::Count) - 1);
     return kProfiles[i];
 }
+
+inline const char* sourceName(Source s, Lang l) { const SourceProfile& p = profile(s); return l == Lang::Tr ? p.nameTr : p.name; }
 
 // ---------------------------------------------------------------- ayarlar
 struct Params {
@@ -475,19 +487,19 @@ struct Advice {
 };
 
 // Önerileri öncelik sırasıyla döndürür (en önemlisi başta). Ses iş parçacığında ÇAĞIRMAYIN.
-inline std::vector<Advice> advise(const Params& p, const Stats& s) {
+inline std::vector<Advice> advise(const Params& p, const Stats& s, Lang lang = Lang::En) {
     std::vector<Advice> out;
     const SourceProfile& sp = profile(p.source);
     const Effective e = resolve(p);
     const float slope = 1.0f - 1.0f / e.ratio;
     const float rr = e.ratio / std::max(e.ratio - 1.0f, 0.05f);  // R/(R-1)
 
-    auto add = [&](int id, Severity sev, const char* msg, const char* label, const Patch& patch) {
+    auto add = [&](int id, Severity sev, const Tx& msg, const Tx& label, const Patch& patch) {
         Advice a;
         a.ruleId = id;
         a.severity = sev;
-        a.message = msg;
-        a.applyLabel = label;
+        a.message = pick(lang, msg);
+        a.applyLabel = pick(lang, label);
         a.patch = patch;
         out.push_back(a);
     };
@@ -499,8 +511,8 @@ inline std::vector<Advice> advise(const Params& p, const Stats& s) {
             Patch pt; pt.mask = kPAttack;
             pt.values.attackMs = (p.source == Source::Kick) ? 25.f : 30.f;
             add(kRuleFastAttack, Severity::Warning,
-                "Çok hızlı yakalıyorum, vuruşun yumruğunu yutuyorum. Biraz yavaşlatalım mı?",
-                "Evet, yavaşlat", pt);
+                {"I'm grabbing too fast and swallowing the punch of the hit. Shall we slow the attack down a little?", "Çok hızlı yakalıyorum, vuruşun yumruğunu yutuyorum. Biraz yavaşlatalım mı?"},
+                {"Yes, slow it down", "Evet, yavaşlat"}, pt);
         }
         const bool lowSrc = (p.source == Source::Bass || p.source == Source::MixBus ||
                              p.source == Source::DrumBus);
@@ -508,8 +520,8 @@ inline std::vector<Advice> advise(const Params& p, const Stats& s) {
             Patch pt; pt.mask = kPRelease;
             pt.values.releaseMs = (p.source == Source::MixBus) ? 200.f : 100.f;
             add(kRuleFastRelease, Severity::Warning,
-                "Çok hızlı bırakıyorum, bas titreyip bozulabilir. Biraz daha yavaş bırakayım mı?",
-                "Evet, yavaşlat", pt);
+                {"I'm letting go too fast, the bass can flutter and distort. Shall I release a bit slower?", "Çok hızlı bırakıyorum, bas titreyip bozulabilir. Biraz daha yavaş bırakayım mı?"},
+                {"Yes, slow it down", "Evet, yavaşlat"}, pt);
         }
         const bool limitish = (p.ratio >= 10.0f) &&
             (p.source == Source::Vocal || p.source == Source::Synth || p.source == Source::MixBus);
@@ -517,26 +529,26 @@ inline std::vector<Advice> advise(const Params& p, const Stats& s) {
             Patch pt; pt.mask = kPRatio;
             pt.values.ratio = (p.source == Source::MixBus) ? 2.0f : 4.0f;
             add(kRuleLimiterRatio, Severity::Tip,
-                "Bu oran sıkıştırıcıdan çok limiter gibi çalışıyor. Daha doğal bir oran deneyelim mi?",
-                "Evet, deneyelim", pt);
+                {"This ratio works more like a limiter than a compressor. Shall we try a more natural one?", "Bu oran sıkıştırıcıdan çok limiter gibi çalışıyor. Daha doğal bir oran deneyelim mi?"},
+                {"Yes, let's try", "Evet, deneyelim"}, pt);
         } else if (p.source == Source::MixBus && p.ratio > 3.0f) {
             Patch pt; pt.mask = kPRatio; pt.values.ratio = 2.0f;
             add(kRuleLimiterRatio, Severity::Tip,
-                "Master'da oran yüksek. 2'ye 1 çok daha doğal yapışır, deneyelim mi?",
-                "Evet, deneyelim", pt);
+                {"The ratio is high for a master bus. 2:1 glues much more naturally. Shall we try it?", "Master'da oran yüksek. 2'ye 1 çok daha doğal yapışır, deneyelim mi?"},
+                {"Yes, let's try", "Evet, deneyelim"}, pt);
         }
         if (p.source == Source::Vocal && p.kneeDb < 1.0f && p.ratio >= 4.0f) {
             Patch pt; pt.mask = kPKnee; pt.values.kneeDb = 8.0f;
             add(kRuleHardKnee, Severity::Tip,
-                "Bu keskin geçiş vokalde fark edilir. Daha yumuşak bir geçiş deneyelim mi?",
-                "Evet, yumuşat", pt);
+                {"This sharp transition is audible on vocals. Shall we try a softer one?", "Bu keskin geçiş vokalde fark edilir. Daha yumuşak bir geçiş deneyelim mi?"},
+                {"Yes, soften it", "Evet, yumuşat"}, pt);
         }
         if ((p.source == Source::MixBus || p.source == Source::DrumBus) && p.scHpfHz < 40.0f) {
             Patch pt; pt.mask = kPHpf;
             pt.values.scHpfHz = (p.source == Source::MixBus) ? 90.f : 80.f;
             add(kRuleLowFreq, Severity::Tip,
-                "Düşük frekanslar beni gereksiz tetikliyor. Yan zincir filtresini yükseltelim mi?",
-                "Evet, yükselt", pt);
+                {"Low frequencies are triggering me for no reason. Shall we raise the sidechain filter?", "Düşük frekanslar beni gereksiz tetikliyor. Yan zincir filtresini yükseltelim mi?"},
+                {"Yes, raise it", "Evet, yükselt"}, pt);
         }
     }
 
@@ -546,8 +558,8 @@ inline std::vector<Advice> advise(const Params& p, const Stats& s) {
             Patch pt; pt.mask = kPOutTrim;
             pt.values.outTrimDb = clampf(p.outTrimDb - clampf(s.outPeakDb + 1.0f, 1.0f, 12.0f), -24.f, 12.f);
             add(kRuleClip, Severity::Warning,
-                "Dikkat, çıkış 0 dB'ye çarpıyor, ses bozulabilir. Çıkışı biraz kısayım mı?",
-                "Evet, kıs", pt);
+                {"Careful, the output is hitting 0 dB and may distort. Shall I turn the output down a bit?", "Dikkat, çıkış 0 dB'ye çarpıyor, ses bozulabilir. Çıkışı biraz kısayım mı?"},
+                {"Yes, turn it down", "Evet, kıs"}, pt);
         }
 
         const bool tooMuch = (s.avgGrDb > sp.goodMaxGr + 1.0f) || (s.maxGrDb > 20.0f && s.avgGrDb > sp.goodMaxGr * 0.7f);
@@ -563,8 +575,8 @@ inline std::vector<Advice> advise(const Params& p, const Stats& s) {
                 pt.values.amount = clampf(p.amount * std::pow(clampf(ratioRed, 0.2f, 0.95f), 1.0f / 1.2f), 5.f, 100.f);
             }
             add(kRuleTooMuch, Severity::Warning,
-                "Hmm, çok sert sıkıştırıyoruz, müzik nefes alamıyor. Biraz gevşeteyim mi?",
-                "Evet, gevşet", pt);
+                {"Hmm, we're squeezing too hard and the music can't breathe. Shall I ease off a bit?", "Hmm, çok sert sıkıştırıyoruz, müzik nefes alamıyor. Biraz gevşeteyim mi?"},
+                {"Yes, ease off", "Evet, gevşet"}, pt);
         }
 
         const bool idle = (s.avgGrDb < 0.3f && s.maxGrDb < 1.0f);
@@ -578,15 +590,15 @@ inline std::vector<Advice> advise(const Params& p, const Stats& s) {
                 pt.values.amount = clampf(p.amount + 25.f, 0.f, 100.f);
             }
             add(kRuleIdle, Severity::Tip,
-                "Neredeyse hiç dokunamıyorum. Biraz daha güç vereyim mi?",
-                "Evet, artır", pt);
+                {"I'm barely touching it. Shall I give it a bit more power?", "Neredeyse hiç dokunamıyorum. Biraz daha güç vereyim mi?"},
+                {"Yes, more", "Evet, artır"}, pt);
         }
 
         if (p.advanced && !p.autoMakeup && s.loudDiffDb > 2.5f) {
             Patch pt; pt.mask = kPAutoMakeup; pt.values.autoMakeup = true;
             add(kRuleLoudnessIllusion, Severity::Tip,
-                "Çıkış girişten daha yüksek, bu yüzden daha iyi duyuluyor olabilir. Adil karşılaştırma için seviyeyi eşitleyeyim mi?",
-                "Evet, eşitle", pt);
+                {"The output is louder than the input, so it may just sound better. Shall I match the levels for a fair comparison?", "Çıkış girişten daha yüksek, bu yüzden daha iyi duyuluyor olabilir. Adil karşılaştırma için seviyeyi eşitleyeyim mi?"},
+                {"Yes, match levels", "Evet, eşitle"}, pt);
         }
 
         const bool parallelSrc = (p.source == Source::Kick || p.source == Source::DrumBus ||
@@ -594,8 +606,8 @@ inline std::vector<Advice> advise(const Params& p, const Stats& s) {
         if (parallelSrc && s.avgGrDb > 7.0f && p.mixPercent >= 99.0f) {
             Patch pt; pt.mask = kPMix; pt.values.mixPercent = 50.0f;
             add(kRuleParallel, Severity::Tip,
-                "Epey sıkıştırdık ama karışım %100. Orijinalin yarısını karıştırırsak hem güç hem canlılık kalır. Deneyelim mi?",
-                "Evet, deneyelim", pt);
+                {"We compressed quite a bit but the mix is 100%. Blending in half of the original keeps both power and life. Try it?", "Epey sıkıştırdık ama karışım %100. Orijinalin yarısını karıştırırsak hem güç hem canlılık kalır. Deneyelim mi?"},
+                {"Yes, let's try", "Evet, deneyelim"}, pt);
         }
     }
 
@@ -608,7 +620,7 @@ inline std::vector<Advice> advise(const Params& p, const Stats& s) {
         Advice a;
         a.ruleId = kRuleAllGood;
         a.severity = Severity::Info;
-        a.message = "Ayarlar harika görünüyor. Aynen devam!";
+        a.message = pick(lang, Tx{"Settings look great. Keep going!", "Ayarlar harika görünüyor. Aynen devam!"});
         out.push_back(a);
     }
     (void)slope;
@@ -627,35 +639,36 @@ inline Mood moodFor(float grDb, bool signalPresent, bool hasActiveAdvice) {
     return Mood::Overwhelmed;
 }
 
-inline const char* moodLine(Mood m) {
+inline const char* moodLine(Mood m, Lang l = Lang::En) {
     switch (m) {
-        case Mood::Sleepy:       return "Zzz... Ses gelince uyanırım.";
-        case Mood::Relaxed:      return "Şu an dinleniyorum. Ses yükselirse devreye girerim.";
-        case Mood::Working:      return "Tam kararında. Ses yerine oturuyor.";
-        case Mood::Strained:     return "Biraz zorlanıyorum. Böyle devam edersek nefes alamaz.";
-        case Mood::Overwhelmed:  return "Çok bastırıyorum! Bir bakalım, ayarı gevşetebilir miyiz?";
+        case Mood::Sleepy:       return pick(l, {"Zzz... I'll wake up when sound arrives.", "Zzz... Ses gelince uyanırım."});
+        case Mood::Relaxed:      return pick(l, {"Resting for now. I'll step in if the sound gets louder.", "Şu an dinleniyorum. Ses yükselirse devreye girerim."});
+        case Mood::Working:      return pick(l, {"Just right. The sound is sitting in place.", "Tam kararında. Ses yerine oturuyor."});
+        case Mood::Strained:     return pick(l, {"I'm struggling a bit. If we keep this up, it can't breathe.", "Biraz zorlanıyorum. Böyle devam edersek nefes alamaz."});
+        case Mood::Overwhelmed:  return pick(l, {"I'm pushing too hard! Can we ease the setting?", "Çok bastırıyorum! Bir bakalım, ayarı gevşetebilir miyiz?"});
         case Mood::Worried:      return "";
     }
     return "";
 }
 
-inline const char* sourceLine(Source s) {
+inline const char* sourceLine(Source s, Lang l = Lang::En) {
     switch (s) {
-        case Source::General: return "Genel mod. Ne olduğunu bilmiyorum ama dengeli giderim.";
-        case Source::Kick:    return "Kick! Vuruşu korurum, sadece kuyruğunu toparlarım.";
-        case Source::Bass:    return "Bas sağlam olsun. Ağır ağır, nazikçe sıkıştırırım.";
-        case Source::Vocal:   return "Vokal tatlı olsun. Cümlelerin seviyesini eşitliyorum.";
-        case Source::Synth:   return "Lead'i yerine oturtalım, ama canlılığı kaybetmeden.";
-        case Source::DrumBus: return "Davullar birbirine yapışsın. Bu bana göre iş!";
-        case Source::MixBus:  return "Master'da incelikle: sadece 1-3 dB. Çok az, ama çok etkili.";
+        case Source::General: return pick(l, {"General mode. I don't know what this is, but I'll keep it balanced.", "Genel mod. Ne olduğunu bilmiyorum ama dengeli giderim."});
+        case Source::Kick:    return pick(l, {"Kick! I'll protect the punch and just tidy up the tail.", "Kick! Vuruşu korurum, sadece kuyruğunu toparlarım."});
+        case Source::Bass:    return pick(l, {"Let the bass stay solid. I'll compress slowly and gently.", "Bas sağlam olsun. Ağır ağır, nazikçe sıkıştırırım."});
+        case Source::Vocal:   return pick(l, {"Let's keep the vocal sweet. I'm evening out the phrases.", "Vokal tatlı olsun. Cümlelerin seviyesini eşitliyorum."});
+        case Source::Synth:   return pick(l, {"Let's sit the lead in place without losing its life.", "Lead'i yerine oturtalım, ama canlılığı kaybetmeden."});
+        case Source::DrumBus: return pick(l, {"Let the drums glue together. This is my kind of job!", "Davullar birbirine yapışsın. Bu bana göre iş!"});
+        case Source::MixBus:  return pick(l, {"Gently on the master: just 1-3 dB. Very little, very effective.", "Master'da incelikle: sadece 1-3 dB. Çok az, ama çok etkili."});
         default: return "";
     }
 }
 
-inline const char* greetingLine() {
-    return "Selam, ben Jack! Önce kaynağı seç, sonra SIKIŞTIR düğmesini yavaş yavaş çevir. Gerisini bana bırak.";
+inline const char* greetingLine(Lang l = Lang::En) {
+    return pick(l, {"Hi, I'm Jack! Pick the source first, then slowly turn the SQUEEZE knob. Leave the rest to me.",
+                    "Selam, ben Jack! Önce kaynağı seç, sonra SIKIŞTIR düğmesini yavaş yavaş çevir. Gerisini bana bırak."});
 }
-inline const char* appliedLine() { return "Tamam! Şimdi çok daha doğal."; }
-inline const char* declinedLine() { return "Peki, sen bilirsin. İstersen sonra tekrar bakarız."; }
+inline const char* appliedLine(Lang l = Lang::En) { return pick(l, {"Done! Much more natural now.", "Tamam! Şimdi çok daha doğal."}); }
+inline const char* declinedLine(Lang l = Lang::En) { return pick(l, {"Okay, your call. We can look again later if you like.", "Peki, sen bilirsin. İstersen sonra tekrar bakarız."}); }
 
-}  // namespace jack
+} // namespace jack

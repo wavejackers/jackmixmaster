@@ -277,35 +277,35 @@ JackAudioProcessorEditor::JackAudioProcessorEditor (JackAudioProcessor& p) : Aud
     for (int i = 0; i < static_cast<int> (jack::Source::Count); ++i)
     {
         auto& b = sourceBtns[i];
-        b.setButtonText (T (jack::profile (static_cast<jack::Source> (i)).name));
+        b.setButtonText (T (jack::sourceName (static_cast<jack::Source> (i), lang)));
         styleChoiceButton (b);
         b.onClick = [this, i]
         {
             proc.setParamReal ("source", static_cast<float> (i));
             const auto now = juce::Time::currentTimeMillis();
-            sourceText = T (jack::sourceLine (static_cast<jack::Source> (i)));
+            sourceText = T (jack::sourceLine (static_cast<jack::Source> (i), lang));
             sourceUntil = now + 5000;
             mutedUntil.clear();  // kaynak değişince önceki "reddedilen" öneriler geçersiz
         };
     }
 
     // his düğmeleri
-    const char* feelNames[3] = { "Yumuşak", "Dengeli", "Vurucu" };
+    const char* feelNames[3] = { "Soft", "Balanced", "Punchy" };
     for (int i = 0; i < 3; ++i)
     {
         feelBtns[i].setButtonText (T (feelNames[i]));
         styleChoiceButton (feelBtns[i]);
         feelBtns[i].onClick = [this, i] { proc.setParamReal ("feel", static_cast<float> (i)); };
     }
-    feelLabel.setText (T ("HİS"), juce::dontSendNotification);
+    feelLabel.setText ("FEEL", juce::dontSendNotification);
     feelLabel.setColour (juce::Label::textColourId, kMuted);
     feelLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (feelLabel);
 
     // ana düğmeler
-    setupKnob (amountSlider, amountLabel, T ("SIKIŞTIR"), " %", 0);
-    setupKnob (mixSlider, mixLabel, T ("KARIŞIM"), " %", 0);
-    setupKnob (trimSlider, trimLabel, T ("ÇIKIŞ"), " dB", 1);
+    setupKnob (amountSlider, amountLabel, "SQUEEZE", " %", 0);
+    setupKnob (mixSlider, mixLabel, "MIX", " %", 0);
+    setupKnob (trimSlider, trimLabel, "OUTPUT", " dB", 1);
     amountSlider.setColour (juce::Slider::rotarySliderFillColourId, kYellow);
 
     // gelişmiş düğmeler
@@ -325,9 +325,9 @@ JackAudioProcessorEditor::JackAudioProcessorEditor (JackAudioProcessor& p) : Aud
         t.setColour (juce::ToggleButton::tickDisabledColourId, kMuted);
         addAndMakeVisible (t);
     };
-    styleToggle (advancedToggle, T ("Gelişmiş"));
-    styleToggle (autoMakeupToggle, T ("Otomatik makeup (adil karşılaştırma)"));
-    styleToggle (progRelToggle, T ("Program release (sıkıştıkça yavaş bırak)"));
+    styleToggle (advancedToggle, "Advanced");
+    styleToggle (autoMakeupToggle, "Auto makeup (fair comparison)");
+    styleToggle (progRelToggle, "Program release (slower as it squeezes)");
 
     // parametre bağlantıları (düğmeler yukarıda oluşturulduktan sonra)
     amountAtt = std::make_unique<SliderAtt> (proc.apvts, "amount", amountSlider);
@@ -349,7 +349,7 @@ JackAudioProcessorEditor::JackAudioProcessorEditor (JackAudioProcessor& p) : Aud
     applyBtn.setColour (juce::TextButton::textColourOffId, kBg);
     noBtn.setColour (juce::TextButton::buttonColourId, kPanel.brighter (0.2f));
     noBtn.setColour (juce::TextButton::textColourOffId, kText);
-    noBtn.setButtonText (T ("Böyle kalsın"));
+    noBtn.setButtonText ("Keep it as is");
     addChildComponent (applyBtn);
     addChildComponent (noBtn);
 
@@ -360,7 +360,7 @@ JackAudioProcessorEditor::JackAudioProcessorEditor (JackAudioProcessor& p) : Aud
         const auto now = juce::Time::currentTimeMillis();
         proc.applyPatchToParams (current->patch);
         mutedUntil[current->ruleId] = now + 6000;  // yeni ölçüm gelene kadar tekrar sorma
-        setFeedback (T (jack::appliedLine()), 3500);
+        setFeedback (T (jack::appliedLine (lang)), 3500);
         current.reset();
     };
     noBtn.onClick = [this]
@@ -369,9 +369,25 @@ JackAudioProcessorEditor::JackAudioProcessorEditor (JackAudioProcessor& p) : Aud
             return;
         const auto now = juce::Time::currentTimeMillis();
         mutedUntil[current->ruleId] = now + 30000;  // 30 sn sus
-        setFeedback (T (jack::declinedLine()), 3500);
+        setFeedback (T (jack::declinedLine (lang)), 3500);
         current.reset();
     };
+
+    // dil düğmeleri
+    for (int i = 0; i < static_cast<int> (jack::Lang::Count); ++i)
+    {
+        auto& b = langBtns[i];
+        b.setButtonText (i == 0 ? "EN" : "TR");
+        styleChoiceButton (b);
+        b.onClick = [this, i]
+        {
+            proc.setLanguage (static_cast<jack::Lang> (i));
+            applyLanguage();
+        };
+    }
+
+    lang = proc.getLanguage();
+    applyLanguage();
 
     greetUntil = juce::Time::currentTimeMillis() + 7000;
     advancedShown = proc.readParams().advanced;
@@ -383,6 +399,32 @@ JackAudioProcessorEditor::JackAudioProcessorEditor (JackAudioProcessor& p) : Aud
 JackAudioProcessorEditor::~JackAudioProcessorEditor()
 {
     stopTimer();
+}
+
+void JackAudioProcessorEditor::applyLanguage()
+{
+    lang = proc.getLanguage();
+    for (int i = 0; i < static_cast<int> (jack::Source::Count); ++i)
+        sourceBtns[i].setButtonText (T (jack::sourceName (static_cast<jack::Source> (i), lang)));
+
+    const jack::Tx feelNames[3] = { { "Soft", "Yumuşak" }, { "Balanced", "Dengeli" }, { "Punchy", "Vurucu" } };
+    for (int i = 0; i < 3; ++i)
+        feelBtns[i].setButtonText (tx (feelNames[i]));
+    feelLabel.setText (tx ({ "FEEL", "HİS" }), juce::dontSendNotification);
+    amountLabel.setText (tx ({ "SQUEEZE", "SIKIŞTIR" }), juce::dontSendNotification);
+    mixLabel.setText (tx ({ "MIX", "KARIŞIM" }), juce::dontSendNotification);
+    trimLabel.setText (tx ({ "OUTPUT", "ÇIKIŞ" }), juce::dontSendNotification);
+    advancedToggle.setButtonText (tx ({ "Advanced", "Gelişmiş" }));
+    autoMakeupToggle.setButtonText (tx ({ "Auto makeup (fair comparison)", "Otomatik makeup (adil karşılaştırma)" }));
+    progRelToggle.setButtonText (tx ({ "Program release (slower as it squeezes)", "Program release (sıkıştıkça yavaş bırak)" }));
+    noBtn.setButtonText (tx ({ "Keep it as is", "Böyle kalsın" }));
+    for (int i = 0; i < static_cast<int> (jack::Lang::Count); ++i)
+        langBtns[i].setToggleState (i == static_cast<int> (lang), juce::dontSendNotification);
+
+    sourceText.clear();
+    feedbackText.clear();
+    refreshAdvice (proc.readParams(), juce::Time::currentTimeMillis());
+    repaint();
 }
 
 void JackAudioProcessorEditor::setFeedback (const juce::String& text, int ms)
@@ -408,7 +450,7 @@ void JackAudioProcessorEditor::updateAdvancedVisibility()
 
 void JackAudioProcessorEditor::refreshAdvice (const jack::Params& p, juce::int64 now)
 {
-    const auto list = jack::advise (p, proc.readStats());
+    const auto list = jack::advise (p, proc.readStats(), lang);
     allGood = false;
     current.reset();
     for (const auto& a : list)
@@ -439,14 +481,17 @@ juce::String JackAudioProcessorEditor::bubbleText (juce::int64 now) const
     if (now < sourceUntil)
         return sourceText;
     if (now < greetUntil)
-        return T (jack::greetingLine());
+        return T (jack::greetingLine (lang));
     if (allGood)
-        return T ("Ayarlar harika görünüyor. Aynen devam!");
-    return T (jack::moodLine (mood));
+        return tx ({ "Settings look great. Keep going!", "Ayarlar harika görünüyor. Aynen devam!" });
+    return T (jack::moodLine (mood, lang));
 }
 
 void JackAudioProcessorEditor::timerCallback()
 {
+    if (proc.getLanguage() != lang)
+        applyLanguage();
+
     const auto p = proc.readParams();
     const auto now = juce::Time::currentTimeMillis();
 
@@ -542,6 +587,8 @@ void JackAudioProcessorEditor::resized()
     trimSlider.setBounds (400, 336, 110, 84);
 
     meterArea = { 20, 428, 330, 24 };
+    langBtns[0].setBounds (20, 455, 38, 18);
+    langBtns[1].setBounds (62, 455, 38, 18);
     advancedToggle.setBounds (370, 426, 150, 28);
 
     // gelişmiş panel

@@ -1,5 +1,7 @@
 // Jack çekirdeği (JackCore.h'nin JavaScript karşılığı). Aynı matematik, aynı sayılar.
 const Jack = (() => {
+  const T = (en, tr) => ({ en, tr });
+  const pk = (v, lang) => (v && typeof v === 'object') ? (lang === 'tr' ? v.tr : v.en) : v;
   const dbToLin = db => Math.pow(10, db * 0.05);
   const linToDb = l => 20 * Math.log10(Math.max(l, 1e-9));
   const clampf = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -8,13 +10,13 @@ const Jack = (() => {
   const Source = { General: 0, Kick: 1, Bass: 2, Vocal: 3, Synth: 4, DrumBus: 5, MixBus: 6, Count: 7 };
   const Feel = { Soft: 0, Balanced: 1, Punchy: 2 };
   const PROFILES = [
-    { name: 'Genel',        ratioMax: 4.0, grMax: 10, attackMs: 15, releaseMs: 150, kneeDb: 6,  hpfHz: 60,  goodMaxGr: 8.0 },
-    { name: 'Kick',         ratioMax: 4.0, grMax: 10, attackMs: 25, releaseMs: 80,  kneeDb: 3,  hpfHz: 60,  goodMaxGr: 8.0 },
-    { name: 'Bas',          ratioMax: 4.0, grMax: 9,  attackMs: 20, releaseMs: 120, kneeDb: 6,  hpfHz: 40,  goodMaxGr: 7.0 },
-    { name: 'Vokal',        ratioMax: 4.0, grMax: 10, attackMs: 8,  releaseMs: 120, kneeDb: 8,  hpfHz: 120, goodMaxGr: 8.0 },
-    { name: 'Synth / Lead', ratioMax: 3.5, grMax: 8,  attackMs: 12, releaseMs: 130, kneeDb: 6,  hpfHz: 80,  goodMaxGr: 7.0 },
-    { name: 'Davul Bus',    ratioMax: 4.0, grMax: 8,  attackMs: 30, releaseMs: 100, kneeDb: 4,  hpfHz: 80,  goodMaxGr: 7.0 },
-    { name: 'Mix Bus',      ratioMax: 2.0, grMax: 4,  attackMs: 30, releaseMs: 200, kneeDb: 10, hpfHz: 90,  goodMaxGr: 3.5 },
+    { name: 'General', nameTr: 'Genel',        ratioMax: 4.0, grMax: 10, attackMs: 15, releaseMs: 150, kneeDb: 6,  hpfHz: 60,  goodMaxGr: 8.0 },
+    { name: 'Kick', nameTr: 'Kick',         ratioMax: 4.0, grMax: 10, attackMs: 25, releaseMs: 80,  kneeDb: 3,  hpfHz: 60,  goodMaxGr: 8.0 },
+    { name: 'Bass', nameTr: 'Bas',          ratioMax: 4.0, grMax: 9,  attackMs: 20, releaseMs: 120, kneeDb: 6,  hpfHz: 40,  goodMaxGr: 7.0 },
+    { name: 'Vocal', nameTr: 'Vokal',        ratioMax: 4.0, grMax: 10, attackMs: 8,  releaseMs: 120, kneeDb: 8,  hpfHz: 120, goodMaxGr: 8.0 },
+    { name: 'Synth / Lead', nameTr: 'Synth / Lead', ratioMax: 3.5, grMax: 8,  attackMs: 12, releaseMs: 130, kneeDb: 6,  hpfHz: 80,  goodMaxGr: 7.0 },
+    { name: 'Drum Bus', nameTr: 'Davul Bus',    ratioMax: 4.0, grMax: 8,  attackMs: 30, releaseMs: 100, kneeDb: 4,  hpfHz: 80,  goodMaxGr: 7.0 },
+    { name: 'Mix Bus', nameTr: 'Mix Bus',      ratioMax: 2.0, grMax: 4,  attackMs: 30, releaseMs: 200, kneeDb: 10, hpfHz: 90,  goodMaxGr: 3.5 },
   ];
   const profile = s => PROFILES[Math.min(Math.max(s | 0, 0), Source.Count - 1)];
 
@@ -207,48 +209,48 @@ const Jack = (() => {
   const Sev = { Info: 0, Tip: 1, Warning: 2 };
   const Rule = { Clip: 1, TooMuch: 2, Idle: 3, FastAttack: 4, FastRelease: 5, LimiterRatio: 6, HardKnee: 7, LoudnessIllusion: 8, Parallel: 9, LowFreq: 10, AllGood: 11 };
 
-  function advise(p, s) {
+  function advise(p, s, lang = 'en') {
     const out = [], sp = profile(p.source), e = resolve(p);
     const rr = e.ratio / Math.max(e.ratio - 1, 0.05);
-    const add = (id, sev, msg, label, mask, vals) => out.push({ ruleId: id, severity: sev, message: msg, applyLabel: label, patch: { mask, values: vals } });
+    const add = (id, sev, msg, label, mask, vals) => out.push({ ruleId: id, severity: sev, message: pk(msg, lang), applyLabel: pk(label, lang), patch: { mask, values: vals } });
     if (p.advanced) {
       const S = Source;
       if ((p.source === S.Kick || p.source === S.DrumBus) && p.attackMs < 3)
-        add(Rule.FastAttack, Sev.Warning, 'Çok hızlı yakalıyorum, vuruşun yumruğunu yutuyorum. Biraz yavaşlatalım mı?', 'Evet, yavaşlat', PF.Attack, { attackMs: p.source === S.Kick ? 25 : 30 });
+        add(Rule.FastAttack, Sev.Warning, T("I'm grabbing too fast and swallowing the punch of the hit. Shall we slow the attack down a little?","Çok hızlı yakalıyorum, vuruşun yumruğunu yutuyorum. Biraz yavaşlatalım mı?"), T("Yes, slow it down","Evet, yavaşlat"), PF.Attack, { attackMs: p.source === S.Kick ? 25 : 30 });
       if ((p.source === S.Bass || p.source === S.MixBus || p.source === S.DrumBus) && p.releaseMs < 30)
-        add(Rule.FastRelease, Sev.Warning, 'Çok hızlı bırakıyorum, bas titreyip bozulabilir. Biraz daha yavaş bırakayım mı?', 'Evet, yavaşlat', PF.Release, { releaseMs: p.source === S.MixBus ? 200 : 100 });
+        add(Rule.FastRelease, Sev.Warning, T("I'm letting go too fast, the bass can flutter and distort. Shall I release a bit slower?","Çok hızlı bırakıyorum, bas titreyip bozulabilir. Biraz daha yavaş bırakayım mı?"), T("Yes, slow it down","Evet, yavaşlat"), PF.Release, { releaseMs: p.source === S.MixBus ? 200 : 100 });
       const limitish = p.ratio >= 10 && (p.source === S.Vocal || p.source === S.Synth || p.source === S.MixBus);
-      if (limitish) add(Rule.LimiterRatio, Sev.Tip, 'Bu oran sıkıştırıcıdan çok limiter gibi çalışıyor. Daha doğal bir oran deneyelim mi?', 'Evet, deneyelim', PF.Ratio, { ratio: p.source === S.MixBus ? 2 : 4 });
-      else if (p.source === S.MixBus && p.ratio > 3) add(Rule.LimiterRatio, Sev.Tip, "Master'da oran yüksek. 2'ye 1 çok daha doğal yapışır, deneyelim mi?", 'Evet, deneyelim', PF.Ratio, { ratio: 2 });
+      if (limitish) add(Rule.LimiterRatio, Sev.Tip, T("This ratio works more like a limiter than a compressor. Shall we try a more natural one?","Bu oran sıkıştırıcıdan çok limiter gibi çalışıyor. Daha doğal bir oran deneyelim mi?"), T("Yes, let's try","Evet, deneyelim"), PF.Ratio, { ratio: p.source === S.MixBus ? 2 : 4 });
+      else if (p.source === S.MixBus && p.ratio > 3) add(Rule.LimiterRatio, Sev.Tip, T("The ratio is high for a master bus. 2:1 glues much more naturally. Shall we try it?","Master'da oran yüksek. 2'ye 1 çok daha doğal yapışır, deneyelim mi?"), T("Yes, let's try","Evet, deneyelim"), PF.Ratio, { ratio: 2 });
       if (p.source === S.Vocal && p.kneeDb < 1 && p.ratio >= 4)
-        add(Rule.HardKnee, Sev.Tip, 'Bu keskin geçiş vokalde fark edilir. Daha yumuşak bir geçiş deneyelim mi?', 'Evet, yumuşat', PF.Knee, { kneeDb: 8 });
+        add(Rule.HardKnee, Sev.Tip, T("This sharp transition is audible on vocals. Shall we try a softer one?","Bu keskin geçiş vokalde fark edilir. Daha yumuşak bir geçiş deneyelim mi?"), T("Yes, soften it","Evet, yumuşat"), PF.Knee, { kneeDb: 8 });
       if ((p.source === S.MixBus || p.source === S.DrumBus) && p.scHpfHz < 40)
-        add(Rule.LowFreq, Sev.Tip, 'Düşük frekanslar beni gereksiz tetikliyor. Yan zincir filtresini yükseltelim mi?', 'Evet, yükselt', PF.Hpf, { scHpfHz: p.source === S.MixBus ? 90 : 80 });
+        add(Rule.LowFreq, Sev.Tip, T("Low frequencies are triggering me for no reason. Shall we raise the sidechain filter?","Düşük frekanslar beni gereksiz tetikliyor. Yan zincir filtresini yükseltelim mi?"), T("Yes, raise it","Evet, yükselt"), PF.Hpf, { scHpfHz: p.source === S.MixBus ? 90 : 80 });
     }
     if (s.valid) {
       if (s.outPeakDb > -0.1)
-        add(Rule.Clip, Sev.Warning, "Dikkat, çıkış 0 dB'ye çarpıyor, ses bozulabilir. Çıkışı biraz kısayım mı?", 'Evet, kıs', PF.OutTrim, { outTrimDb: clampf(p.outTrimDb - clampf(s.outPeakDb + 1, 1, 12), -24, 12) });
+        add(Rule.Clip, Sev.Warning, T("Careful, the output is hitting 0 dB and may distort. Shall I turn the output down a bit?","Dikkat, çıkış 0 dB'ye çarpıyor, ses bozulabilir. Çıkışı biraz kısayım mı?"), T("Yes, turn it down","Evet, kıs"), PF.OutTrim, { outTrimDb: clampf(p.outTrimDb - clampf(s.outPeakDb + 1, 1, 12), -24, 12) });
       const tooMuch = s.avgGrDb > sp.goodMaxGr + 1 || (s.maxGrDb > 20 && s.avgGrDb > sp.goodMaxGr * 0.7);
       if (tooMuch) {
         let mask, vals;
         if (p.advanced) { mask = PF.Threshold; const ex = Math.max(s.avgGrDb - sp.goodMaxGr * 0.8, 1); vals = { thresholdDb: clampf(p.thresholdDb + ex * rr, -70, 0) }; }
         else { mask = PF.Amount; const rd = sp.goodMaxGr * 0.8 / Math.max(s.avgGrDb, 0.1); vals = { amount: clampf(p.amount * Math.pow(clampf(rd, 0.2, 0.95), 1 / 1.2), 5, 100) }; }
-        add(Rule.TooMuch, Sev.Warning, 'Hmm, çok sert sıkıştırıyoruz, müzik nefes alamıyor. Biraz gevşeteyim mi?', 'Evet, gevşet', mask, vals);
+        add(Rule.TooMuch, Sev.Warning, T("Hmm, we're squeezing too hard and the music can't breathe. Shall I ease off a bit?","Hmm, çok sert sıkıştırıyoruz, müzik nefes alamıyor. Biraz gevşeteyim mi?"), T("Yes, ease off","Evet, gevşet"), mask, vals);
       }
       if (s.avgGrDb < 0.3 && s.maxGrDb < 1 && (p.advanced || p.amount >= 20)) {
         let mask, vals;
         if (p.advanced) { mask = PF.Threshold; vals = { thresholdDb: clampf(s.inPeakDb - 4 * rr, -70, 0) }; }
         else { mask = PF.Amount; vals = { amount: clampf(p.amount + 25, 0, 100) }; }
-        add(Rule.Idle, Sev.Tip, 'Neredeyse hiç dokunamıyorum. Biraz daha güç vereyim mi?', 'Evet, artır', mask, vals);
+        add(Rule.Idle, Sev.Tip, T("I'm barely touching it. Shall I give it a bit more power?","Neredeyse hiç dokunamıyorum. Biraz daha güç vereyim mi?"), T("Yes, more","Evet, artır"), mask, vals);
       }
       if (p.advanced && !p.autoMakeup && s.loudDiffDb > 2.5)
-        add(Rule.LoudnessIllusion, Sev.Tip, 'Çıkış girişten daha yüksek, bu yüzden daha iyi duyuluyor olabilir. Adil karşılaştırma için seviyeyi eşitleyeyim mi?', 'Evet, eşitle', PF.AutoMakeup, { autoMakeup: true });
+        add(Rule.LoudnessIllusion, Sev.Tip, T("The output is louder than the input, so it may just sound better. Shall I match the levels for a fair comparison?","Çıkış girişten daha yüksek, bu yüzden daha iyi duyuluyor olabilir. Adil karşılaştırma için seviyeyi eşitleyeyim mi?"), T("Yes, match levels","Evet, eşitle"), PF.AutoMakeup, { autoMakeup: true });
       const parallelSrc = p.source === Source.Kick || p.source === Source.DrumBus || p.source === Source.General;
       if (parallelSrc && s.avgGrDb > 7 && p.mixPercent >= 99)
-        add(Rule.Parallel, Sev.Tip, 'Epey sıkıştırdık ama karışım %100. Orijinalin yarısını karıştırırsak hem güç hem canlılık kalır. Deneyelim mi?', 'Evet, deneyelim', PF.Mix, { mixPercent: 50 });
+        add(Rule.Parallel, Sev.Tip, T("We compressed quite a bit but the mix is 100%. Blending in half of the original keeps both power and life. Try it?","Epey sıkıştırdık ama karışım %100. Orijinalin yarısını karıştırırsak hem güç hem canlılık kalır. Deneyelim mi?"), T("Yes, let's try","Evet, deneyelim"), PF.Mix, { mixPercent: 50 });
     }
     out.sort((a, b) => b.severity - a.severity); // Array.sort kararlı
-    if (!out.length && s.valid) out.push({ ruleId: Rule.AllGood, severity: Sev.Info, message: 'Ayarlar harika görünüyor. Aynen devam!', applyLabel: '', patch: { mask: 0, values: {} } });
+    if (!out.length && s.valid) out.push({ ruleId: Rule.AllGood, severity: Sev.Info, message: T("Settings look great. Keep going!","Ayarlar harika görünüyor. Aynen devam!"), applyLabel: '', patch: { mask: 0, values: {} } });
     return out;
   }
 
@@ -257,10 +259,28 @@ const Jack = (() => {
     if (!sig) return Mood.Sleepy; if (adv) return Mood.Worried;
     if (gr < 0.5) return Mood.Relaxed; if (gr < 6) return Mood.Working; if (gr < 12) return Mood.Strained; return Mood.Overwhelmed;
   }
-  const moodLine = m => ['Zzz... Ses gelince uyanırım.', 'Şu an dinleniyorum. Ses yükselirse devreye girerim.', 'Tam kararında. Ses yerine oturuyor.', 'Biraz zorlanıyorum. Böyle devam edersek nefes alamaz.', 'Çok bastırıyorum! Bir bakalım, ayarı gevşetebilir miyiz?', ''][m];
-  const sourceLine = s => ['Genel mod. Ne olduğunu bilmiyorum ama dengeli giderim.', 'Kick! Vuruşu korurum, sadece kuyruğunu toparlarım.', 'Bas sağlam olsun. Ağır ağır, nazikçe sıkıştırırım.', 'Vokal tatlı olsun. Cümlelerin seviyesini eşitliyorum.', 'Lead\'i yerine oturtalım, ama canlılığı kaybetmeden.', 'Davullar birbirine yapışsın. Bu bana göre iş!', "Master'da incelikle: sadece 1-3 dB. Çok az, ama çok etkili."][s] || '';
-  const greetingLine = () => 'Selam, ben Jack! Önce kaynağı seç, sonra SIKIŞTIR düğmesini yavaş yavaş çevir. Gerisini bana bırak.';
+  const MOOD = [
+    T('Zzz... I\'ll wake up when sound arrives.', 'Zzz... Ses gelince uyanırım.'),
+    T('Resting for now. I\'ll step in if the sound gets louder.', 'Şu an dinleniyorum. Ses yükselirse devreye girerim.'),
+    T('Just right. The sound is sitting in place.', 'Tam kararında. Ses yerine oturuyor.'),
+    T('I\'m struggling a bit. If we keep this up, it can\'t breathe.', 'Biraz zorlanıyorum. Böyle devam edersek nefes alamaz.'),
+    T('I\'m pushing too hard! Can we ease the setting?', 'Çok bastırıyorum! Bir bakalım, ayarı gevşetebilir miyiz?'),
+    T('', '')];
+  const moodLine = (m, lang = 'en') => pk(MOOD[m], lang);
+  const SRC = [
+    T("General mode. I don't know what this is, but I'll keep it balanced.", 'Genel mod. Ne olduğunu bilmiyorum ama dengeli giderim.'),
+    T("Kick! I'll protect the punch and just tidy up the tail.", 'Kick! Vuruşu korurum, sadece kuyruğunu toparlarım.'),
+    T('Let the bass stay solid. I\'ll compress slowly and gently.', 'Bas sağlam olsun. Ağır ağır, nazikçe sıkıştırırım.'),
+    T("Let's keep the vocal sweet. I'm evening out the phrases.", 'Vokal tatlı olsun. Cümlelerin seviyesini eşitliyorum.'),
+    T("Let's sit the lead in place without losing its life.", "Lead'i yerine oturtalım, ama canlılığı kaybetmeden."),
+    T('Let the drums glue together. This is my kind of job!', 'Davullar birbirine yapışsın. Bu bana göre iş!'),
+    T('Gently on the master: just 1-3 dB. Very little, very effective.', "Master'da incelikle: sadece 1-3 dB. Çok az, ama çok etkili.")];
+  const sourceLine = (s, lang = 'en') => pk(SRC[s], lang) || '';
+  const sourceName = (s, lang = 'en') => lang === 'tr' ? PROFILES[s].nameTr : PROFILES[s].name;
+  const greetingLine = (lang = 'en') => pk(T('Hi, I\'m Jack! Pick the source first, then slowly turn the SQUEEZE knob. Leave the rest to me.', 'Selam, ben Jack! Önce kaynağı seç, sonra SIKIŞTIR düğmesini yavaş yavaş çevir. Gerisini bana bırak.'), lang);
+  const appliedLine = (lang = 'en') => pk(T('Done! Much more natural now.', 'Tamam! Şimdi çok daha doğal.'), lang);
+  const declinedLine = (lang = 'en') => pk(T('Okay, your call. We can look again later if you like.', 'Peki, sen bilirsin. İstersen sonra tekrar bakarız.'), lang);
 
-  return { dbToLin, linToDb, clampf, Source, Feel, PROFILES, profile, defaultParams, resolve, Compressor, PF, applyPatch, Sev, Rule, advise, Mood, moodFor, moodLine, sourceLine, greetingLine };
+  return { dbToLin, linToDb, clampf, Source, Feel, PROFILES, profile, defaultParams, resolve, Compressor, PF, applyPatch, Sev, Rule, advise, Mood, moodFor, moodLine, sourceLine, sourceName, greetingLine, appliedLine, declinedLine, T, pk };
 })();
 if (typeof module !== 'undefined') module.exports = Jack;

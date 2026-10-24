@@ -551,6 +551,26 @@ static void testClosedLoop() {
     }
 }
 
+static void testLanguages() {
+    std::printf("\n[Diller]\n");
+    Params p; p.advanced = true; p.source = Source::Kick; p.attackMs = 0.5f;
+    Stats s; s.valid = true; s.avgGrDb = 3; s.maxGrDb = 6; s.inPeakDb = -6; s.outPeakDb = -6;
+    auto en = advise(p, s, Lang::En), tr = advise(p, s, Lang::Tr), def = advise(p, s);
+    CHECK(!en.empty() && !tr.empty(), "her iki dilde de öneri üretiliyor");
+    CHECK(en[0].message != tr[0].message && en[0].applyLabel != tr[0].applyLabel, "mesaj ve düğme yazısı dile göre değişiyor");
+    CHECK(def[0].message == en[0].message, "varsayılan dil İngilizce");
+    CHECK(en[0].ruleId == tr[0].ruleId, "kural dilden bağımsız");
+    bool ok = true;
+    for (int l = 0; l < static_cast<int>(Lang::Count); ++l) {
+        const Lang L = static_cast<Lang>(l);
+        for (int m = 0; m <= static_cast<int>(Mood::Overwhelmed); ++m) if (!*moodLine(static_cast<Mood>(m), L)) ok = false;
+        for (int sc = 0; sc < static_cast<int>(Source::Count); ++sc) if (!*sourceLine(static_cast<Source>(sc), L) || !*sourceName(static_cast<Source>(sc), L)) ok = false;
+        if (!*greetingLine(L) || !*appliedLine(L) || !*declinedLine(L)) ok = false;
+    }
+    CHECK(ok, "tüm Jack sözleri ve kaynak adları iki dilde de dolu");
+    CHECK(std::string(sourceName(Source::General, Lang::En)) == "General" && std::string(sourceName(Source::General, Lang::Tr)) == "Genel", "kaynak adları: General / Genel");
+}
+
 int main() {
     std::printf("JackCore testleri (örnekleme hızı %.0f Hz)\n", FS);
     testStaticCurve();
@@ -564,6 +584,7 @@ int main() {
     testProfiles();
     testAdvisorRules();
     testClosedLoop();
+    testLanguages();
     std::printf("\nSonuç: %d başarılı, %d başarısız\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }

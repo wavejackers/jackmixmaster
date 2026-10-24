@@ -53,6 +53,7 @@ button.big{font-family:var(--display);font-weight:700;font-size:17px;padding:10p
 .bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--jack);border-radius:6px}
 .bar.gr i{background:var(--hot);left:auto;right:0}
 .num{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.langs{display:flex;gap:6px;order:2}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{padding:7px 12px;min-height:38px;border-radius:999px}
 .chip[aria-pressed="true"]{background:var(--jack);border-color:var(--jack-deep);color:#04201d;font-weight:600;transform:translateY(3px);box-shadow:inset 0 2px 4px rgba(0,0,0,.3),0 0 0 var(--edge)}
@@ -84,17 +85,18 @@ summary{cursor:pointer;font-weight:600}
 <div class="wrap">
   <header>
     <h1>Jack Compressor</h1>
-    <p>Kompresörü bilmene gerek yok. Jack bilir.</p>
+    <div class="langs" role="group" aria-label="Language"><button type="button" class="chip" id="langEn" aria-pressed="true">EN</button><button type="button" class="chip" id="langTr" aria-pressed="false">TR</button></div>
+    <p data-i="sub"></p>
   </header>
 
   <section class="card stagecard">
     <div class="stage">
-      <canvas id="jack" width="600" height="630" role="img" aria-label="Jack: sıkıştırma arttıkça gövdesi ezilen, ruh hali değişen karakter"></canvas>
+      <canvas id="jack" width="600" height="630" role="img"></canvas>
       <div class="talk">
         <div class="bubble" id="bubble" aria-live="polite"></div>
         <div class="btnrow" id="adviceBtns" hidden>
           <button class="primary" id="applyBtn" type="button"></button>
-          <button id="noBtn" type="button">Böyle kalsın</button>
+          <button id="noBtn" type="button" data-i="keep"></button>
         </div>
         <div class="src-line" id="srcLine"></div>
       </div>
@@ -103,57 +105,57 @@ summary{cursor:pointer;font-weight:600}
 
   <section class="card sect">
     <div class="transport">
-      <button class="primary big" id="playBtn" type="button">▶ Dinle</button>
-      <button id="bypassBtn" type="button" aria-pressed="false">Jack açık</button>
+      <button class="primary big" id="playBtn" type="button"></button>
+      <button id="bypassBtn" type="button" aria-pressed="false"></button>
       <span class="sp"></span>
-      <label class="tools"><span class="note">Kendi sesin:</span><input type="file" id="file" accept="audio/*"></label>
+      <label class="tools"><span class="note" data-i="yourAudio"></span><input type="file" id="file" accept="audio/*"></label>
     </div>
     <div class="meters">
-      <div class="meter"><label for="mIn">Giriş</label><div class="bar" id="mIn"><i></i></div><span class="num" id="nIn">-∞ dB</span></div>
-      <div class="meter"><label for="mGr">Sıkıştırma</label><div class="bar gr" id="mGr"><i></i></div><span class="num" id="nGr">0.0 dB</span></div>
-      <div class="meter"><label for="mOut">Çıkış</label><div class="bar" id="mOut"><i></i></div><span class="num" id="nOut">-∞ dB</span></div>
+      <div class="meter"><label for="mIn" data-i="mIn"></label><div class="bar" id="mIn"><i></i></div><span class="num" id="nIn">-∞ dB</span></div>
+      <div class="meter"><label for="mGr" data-i="mGr"></label><div class="bar gr" id="mGr"><i></i></div><span class="num" id="nGr">0.0 dB</span></div>
+      <div class="meter"><label for="mOut" data-i="mOut"></label><div class="bar" id="mOut"><i></i></div><span class="num" id="nOut">-∞ dB</span></div>
     </div>
-    <p class="note" id="srcNote">Dinlediğin: hazır 124 BPM örnek döngü (kick, clap, hat, bas, synth).</p>
+    <p class="note" id="srcNote"></p>
   </section>
 
   <section class="card sect" id="simple">
-    <span class="lbl">1 · Bu ne?</span>
+    <span class="lbl" data-i="step1"></span>
     <div class="chips" id="sources" role="group" aria-label="Kaynak"></div>
     <div class="ctl main-amount">
-      <div class="top"><b>Sıkıştır</b><span class="num" id="vAmount"></span></div>
-      <input type="range" id="amount" min="0" max="100" step="0.1" aria-label="Sıkıştır">
-      <span class="hint">Yavaş yavaş çevir. Müzik ezilmeye başlayınca Jack söyler.</span>
+      <div class="top"><b data-i="squeeze"></b><span class="num" id="vAmount"></span></div>
+      <input type="range" id="amount" min="0" max="100" step="0.1" aria-label="Squeeze">
+      <span class="hint" data-i="squeezeHint"></span>
     </div>
-    <span class="lbl">2 · Nasıl hissetsin?</span>
+    <span class="lbl" data-i="step2"></span>
     <div class="chips" id="feels" role="group" aria-label="His"></div>
     <div class="knobs">
-      <div class="ctl"><div class="top"><b>Karışım</b><span class="num" id="vMix"></span></div><input type="range" id="mix" min="0" max="100" step="0.1" aria-label="Karışım"></div>
-      <div class="ctl"><div class="top"><b>Çıkış</b><span class="num" id="vTrim"></span></div><input type="range" id="trim" min="-24" max="12" step="0.1" aria-label="Çıkış seviyesi"></div>
+      <div class="ctl"><div class="top"><b data-i="mix"></b><span class="num" id="vMix"></span></div><input type="range" id="mix" min="0" max="100" step="0.1" aria-label="Karışım"></div>
+      <div class="ctl"><div class="top"><b data-i="out"></b><span class="num" id="vTrim"></span></div><input type="range" id="trim" min="-24" max="12" step="0.1" aria-label="Çıkış seviyesi"></div>
     </div>
   </section>
 
   <section class="card sect">
     <div class="tools">
-      <span class="lbl">Jack'i dene</span>
-      <button id="badA" type="button">Çok sert sıkıştır (gelişmiş)</button>
-      <button id="badB" type="button">Eşiği 0 yap (gelişmiş)</button>
-      <button id="badC" type="button">Kick'e hızlı attack (gelişmiş)</button>
-      <button id="reset" type="button">Sıfırla</button>
+      <span class="lbl" data-i="tryJack"></span>
+      <button id="badA" type="button" data-i="badA"></button>
+      <button id="badB" type="button" data-i="badB"></button>
+      <button id="badC" type="button" data-i="badC"></button>
+      <button id="reset" type="button" data-i="reset"></button>
     </div>
-    <p class="hint">Yanlış ayar yap, birkaç saniye bekle. Jack ölçer, ne olduğunu söyler, düzeltmeyi önerir.</p>
+    <p class="hint" data-i="tryHint"></p>
     <details id="advDet">
-      <summary>Gelişmiş (bilenler için)</summary>
-      <p class="hint">Burada Jack'in otomatik ayarı kapanır, her şeyi sen belirlersin. Jack yine izler.</p>
-      <div class="tog"><input type="checkbox" id="advanced"><label for="advanced">Gelişmiş modu aç</label></div>
+      <summary data-i="advSummary"></summary>
+      <p class="hint" data-i="advHint"></p>
+      <div class="tog"><input type="checkbox" id="advanced"><label for="advanced" data-i="advOn"></label></div>
       <div class="knobs" id="advKnobs" style="margin-top:12px"></div>
       <div class="tools" style="margin-top:12px">
-        <div class="tog"><input type="checkbox" id="automk"><label for="automk">Otomatik makeup</label></div>
+        <div class="tog"><input type="checkbox" id="automk"><label for="automk" data-i="automk"></label></div>
         <div class="tog"><input type="checkbox" id="progrel"><label for="progrel">Program release</label></div>
       </div>
     </details>
   </section>
 
-  <p class="note">Bu sayfa Jack'in çekirdeğinin JavaScript karşılığıdır, eklenti değildir. Aynı sinyalde C++ çekirdeğiyle ölçülen sıkıştırma, 0,01 dB içinde uyuşuyor. DAW içinde (FL Studio dahil) henüz denenmedi.</p>
+  <p class="note" data-i="foot"></p>
 </div>
 
 <script>
@@ -164,10 +166,38 @@ summary{cursor:pointer;font-weight:600}
 'use strict';
 const J = Jack;
 const $ = id => document.getElementById(id);
+let lang = 'en';
+try { const sv = localStorage.getItem('jack-lang'); if (sv === 'tr' || sv === 'en') lang = sv; } catch (_) {}
+const I18N = {
+  sub: ["You don't need to know compressors. Jack does.", 'Kompresörü bilmene gerek yok. Jack bilir.'],
+  keep: ['Keep it as is', 'Böyle kalsın'], yourAudio: ['Your own audio:', 'Kendi sesin:'],
+  mIn: ['Input', 'Giriş'], mGr: ['Squeeze', 'Sıkıştırma'], mOut: ['Output', 'Çıkış'],
+  step1: ['1 · What is it?', '1 · Bu ne?'], squeeze: ['Squeeze', 'Sıkıştır'],
+  squeezeHint: ['Turn it slowly. Jack speaks up when the music starts to get crushed.', 'Yavaş yavaş çevir. Müzik ezilmeye başlayınca Jack söyler.'],
+  step2: ['2 · How should it feel?', '2 · Nasıl hissetsin?'], mix: ['Mix', 'Karışım'], out: ['Output', 'Çıkış'],
+  tryJack: ["Try Jack", "Jack'i dene"],
+  badA: ['Squeeze way too hard (advanced)', 'Çok sert sıkıştır (gelişmiş)'], badB: ['Threshold to 0 (advanced)', 'Eşiği 0 yap (gelişmiş)'], badC: ['Fast attack on kick (advanced)', "Kick'e hızlı attack (gelişmiş)"],
+  reset: ['Reset', 'Sıfırla'],
+  tryHint: ['Make a bad setting and wait a few seconds. Jack measures, tells you what is wrong and offers a fix.', 'Yanlış ayar yap, birkaç saniye bekle. Jack ölçer, ne olduğunu söyler, düzeltmeyi önerir.'],
+  advSummary: ['Advanced (for those who know)', 'Gelişmiş (bilenler için)'],
+  advHint: ["Jack's automatic setting turns off here and you decide everything. Jack keeps watching.", "Burada Jack'in otomatik ayarı kapanır, her şeyi sen belirlersin. Jack yine izler."],
+  advOn: ['Turn on advanced mode', 'Gelişmiş modu aç'], automk: ['Auto makeup', 'Otomatik makeup'],
+  foot: ["This page is a JavaScript port of Jack's core, not the plugin. On the same signal its compression matches the C++ core within 0.01 dB.", "Bu sayfa Jack'in çekirdeğinin JavaScript karşılığıdır, eklenti değildir. Aynı sinyalde C++ çekirdeğiyle ölçülen sıkıştırma, 0,01 dB içinde uyuşuyor."],
+  play: ['▶ Play', '▶ Dinle'], stop: ['❚❚ Stop', '❚❚ Durdur'], jackOn: ['Jack on', 'Jack açık'], jackOff: ['Jack off', 'Jack kapalı'],
+  srcDemo: ['Playing: built-in 124 BPM demo loop (kick, clap, hat, bass, synth).', 'Dinlediğin: hazır 124 BPM örnek döngü (kick, clap, hat, bas, synth).'],
+  srcFile: ['Playing: ', 'Dinlediğin: '], srcFileTail: [' (the file stays on this page, nothing is uploaded).', ' (dosya yalnızca bu sayfada kalır, yüklenmez).'],
+  srcFail: ["Couldn't open this file. Try WAV, MP3 or M4A.", 'Bu dosya açılamadı. WAV, MP3 veya M4A dene.'],
+  changed: ["You changed the setting. I'll listen for a few seconds...", 'Ayarı değiştirdin. Birkaç saniye dinleyip bakacağım...'],
+  off: ["I'm switched off. Turn me on and you'll hear the difference.", 'Ben kapalıyım. Açınca farkı duyarsın.'],
+  good: ['Settings look great. Keep going!', 'Ayarlar harika görünüyor. Aynen devam!'],
+  canvasLbl: ['Jack: a character whose body squashes as compression grows, and whose mood and arms follow the sound', 'Jack: sıkıştırma arttıkça gövdesi ezilen, ruh hali ve kolları sese göre değişen karakter'],
+  feel: [['Soft', 'Balanced', 'Punchy'], ['Yumuşak', 'Dengeli', 'Vurucu']],
+};
+const L = k => { const v = I18N[k]; return v ? v[lang === 'tr' ? 1 : 0] : k; };
 const params = J.defaultParams();
 const comp = new J.Compressor();
 let ctx = null, node = null, playing = false, bypass = false;
-let srcBuf = null, srcName = 'örnek';
+let srcBuf = null, srcName = '', srcKind = 'demo';
 let pos = 0, inPk = 0, outPk = 0;
 
 /* ---------- örnek döngü: 124 BPM, 4 bar, kod ile üretilir ---------- */
@@ -223,29 +253,29 @@ function ensureAudio() {
   node.connect(ctx.destination);
 }
 function setPlaying(p) {
-  playing = p; $('playBtn').textContent = p ? '❚❚ Durdur' : '▶ Dinle';
+  playing = p; $('playBtn').textContent = p ? L('stop') : L('play');
   if (!p) { inPk = outPk = 0; comp.reset(); }
 }
 $('playBtn').onclick = async () => {
   ensureAudio(); if (ctx.state === 'suspended') await ctx.resume();
   setPlaying(!playing); if (playing) { speakUntil.greet = performance.now() + 5000; }
 };
-$('bypassBtn').onclick = () => { bypass = !bypass; const b = $('bypassBtn'); b.setAttribute('aria-pressed', bypass); b.textContent = bypass ? 'Jack kapalı' : 'Jack açık'; if (!bypass) comp.reset(); };
+$('bypassBtn').onclick = () => { bypass = !bypass; const b = $('bypassBtn'); b.setAttribute('aria-pressed', bypass); b.textContent = bypass ? L('jackOff') : L('jackOn'); if (!bypass) comp.reset(); };
 $('file').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
   ensureAudio();
   try {
     const arr = await f.arrayBuffer(); const buf = await ctx.decodeAudioData(arr);
     srcBuf = buf; pos = 0; srcName = f.name; comp.reset();
-    $('srcNote').textContent = 'Dinlediğin: ' + f.name + ' (dosya yalnızca bu sayfada kalır, yüklenmez).';
-  } catch (_) { $('srcNote').textContent = 'Bu dosya açılamadı. WAV, MP3 veya M4A dene.'; }
+    srcKind = 'file'; srcName = f.name; $('srcNote').textContent = L('srcFile') + f.name + L('srcFileTail');
+  } catch (_) { $('srcNote').textContent = L('srcFail'); }
 };
 
 /* ---------- arayüz ---------- */
-const SRC_NAMES = J.PROFILES.map(p => p.name), FEEL_NAMES = ['Yumuşak', 'Dengeli', 'Vurucu'];
+const SRC_NAMES = () => J.PROFILES.map(p => lang === 'tr' ? p.nameTr : p.name), FEEL_NAMES = () => I18N.feel[lang === 'tr' ? 1 : 0];
 const sourcesEl = $('sources'), feelsEl = $('feels');
-SRC_NAMES.forEach((nm, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = nm; b.onclick = () => { params.source = i; syncUI(); sync(); say('src', J.sourceLine(i), 6000); }; sourcesEl.appendChild(b); });
-FEEL_NAMES.forEach((nm, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = nm; b.onclick = () => { params.feel = i; syncUI(); sync(); }; feelsEl.appendChild(b); });
+SRC_NAMES().forEach((nm, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = nm; b.onclick = () => { params.source = i; syncUI(); sync(); say('src', J.sourceLine(i, lang), 6000); }; sourcesEl.appendChild(b); });
+FEEL_NAMES().forEach((nm, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = nm; b.onclick = () => { params.feel = i; syncUI(); sync(); }; feelsEl.appendChild(b); });
 
 const fmt = (v, d, u) => v.toFixed(d) + u;
 const basic = [
@@ -289,15 +319,15 @@ function sync() { comp.setParams(params); }
 const speakUntil = { greet: performance.now() + 60000 };
 let feedback = null, srcSay = null, current = null; const muted = new Map();
 function say(kind, text, ms) { const o = { text, until: performance.now() + ms }; if (kind === 'fb') feedback = o; else srcSay = o; }
-$('applyBtn').onclick = () => { if (!current) return; J.applyPatch(params, current.patch); syncUI(); sync(); comp.reset(); current = null; say('fb', 'Tamam! Şimdi çok daha doğal.', 4500); };
-$('noBtn').onclick = () => { if (!current) return; muted.set(current.ruleId, performance.now() + 90000); current = null; say('fb', 'Peki, sen bilirsin. İstersen sonra tekrar bakarız.', 4500); };
+$('applyBtn').onclick = () => { if (!current) return; J.applyPatch(params, current.patch); syncUI(); sync(); comp.reset(); current = null; say('fb', J.appliedLine(lang), 4500); };
+$('noBtn').onclick = () => { if (!current) return; muted.set(current.ruleId, performance.now() + 90000); current = null; say('fb', J.declinedLine(lang), 4500); };
 let lastAdvice = 0;
 function refreshAdvice(now) {
   if (now - lastAdvice < 500) return; lastAdvice = now;
   if (!playing || bypass) { current = null; return; }
-  const list = J.advise(params, comp.stats).filter(a => a.applyLabel && !(muted.get(a.ruleId) > now));
+  const list = J.advise(params, comp.stats, lang).filter(a => a.applyLabel && !(muted.get(a.ruleId) > now));
   current = list[0] || null;
-  allGood = !current && comp.stats.valid && J.advise(params, comp.stats).some(a => a.ruleId === J.Rule.AllGood);
+  allGood = !current && comp.stats.valid && J.advise(params, comp.stats, lang).some(a => a.ruleId === J.Rule.AllGood);
 }
 let allGood = false;
 
@@ -306,7 +336,7 @@ const TEST_BADS = {
   badB: () => { params.advanced = true; params.thresholdDb = 0; params.source = J.Source.General; },
   badC: () => { params.advanced = true; params.source = J.Source.Kick; params.attackMs = 0.3; params.thresholdDb = -22; params.ratio = 6; },
 };
-Object.keys(TEST_BADS).forEach(k => { $(k).onclick = () => { TEST_BADS[k](); muted.clear(); comp.reset(); syncUI(); sync(); if (!playing) $('playBtn').click(); say('src', 'Ayarı değiştirdin. Birkaç saniye dinleyip bakacağım...', 5000); }; });
+Object.keys(TEST_BADS).forEach(k => { $(k).onclick = () => { TEST_BADS[k](); muted.clear(); comp.reset(); syncUI(); sync(); if (!playing) $('playBtn').click(); say('src', L('changed'), 5000); }; });
 $('reset').onclick = () => { Object.assign(params, J.defaultParams()); muted.clear(); comp.reset(); syncUI(); sync(); };
 
 /* ---------- Jack: ışıklandırmalı 3B görünümlü çizim ---------- */
@@ -497,10 +527,10 @@ function frame(now) {
   if (feedback && feedback.until > now) text = feedback.text;
   else if (current) text = current.message;
   else if (srcSay && srcSay.until > now) text = srcSay.text;
-  else if (!playing && now < speakUntil.greet) text = J.greetingLine();
-  else if (bypass && playing) text = 'Ben kapalıyım. Açınca farkı duyarsın.';
-  else if (allGood) text = 'Ayarlar harika görünüyor. Aynen devam!';
-  else text = J.moodLine(mood) || '...';
+  else if (!playing && now < speakUntil.greet) text = J.greetingLine(lang);
+  else if (bypass && playing) text = L('off');
+  else if (allGood) text = L('good');
+  else text = J.moodLine(mood, lang) || '...';
   const bub = $('bubble'); if (bub.textContent !== text) bub.textContent = text;
   bub.classList.toggle('alert', !!current && current.severity === J.Sev.Warning);
   $('adviceBtns').hidden = !current;
@@ -511,7 +541,21 @@ function frame(now) {
   drawJack(now, Math.min(1, inPk * 1.1));
   requestAnimationFrame(frame);
 }
-syncUI(); comp.prepare(44100); comp.setParams(params);
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i]').forEach(el => { el.textContent = L(el.dataset.i); });
+  [...sourcesEl.children].forEach((b, i) => { b.textContent = SRC_NAMES()[i]; });
+  [...feelsEl.children].forEach((b, i) => { b.textContent = FEEL_NAMES()[i]; });
+  $('playBtn').textContent = playing ? L('stop') : L('play');
+  $('bypassBtn').textContent = bypass ? L('jackOff') : L('jackOn');
+  $('srcNote').textContent = srcKind === 'file' ? L('srcFile') + srcName + L('srcFileTail') : L('srcDemo');
+  $('jack').setAttribute('aria-label', L('canvasLbl'));
+  $('langEn').setAttribute('aria-pressed', lang === 'en'); $('langTr').setAttribute('aria-pressed', lang === 'tr');
+  feedback = null; srcSay = null; lastAdvice = 0; speakUntil.greet = performance.now() + 6000;
+}
+function setLang(l) { lang = l; try { localStorage.setItem('jack-lang', l); } catch (_) {} applyLang(); }
+$('langEn').onclick = () => setLang('en'); $('langTr').onclick = () => setLang('tr');
+syncUI(); comp.prepare(44100); comp.setParams(params); applyLang();
 if (!CanvasRenderingContext2D.prototype.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); this.moveTo(x + r, y); this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r); this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r); this.closePath(); };
 requestAnimationFrame(frame);
 })();

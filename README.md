@@ -13,6 +13,9 @@ Müzik prodüksiyonu için akıllı kompresör. İçinde **Jack** adında bir ka
 
 Karakter detayları: `docs/KARAKTER.md`
 
+## Diller
+Varsayılan dil **İngilizce**. Eklentide sol alttaki **EN / TR** düğmeleriyle Türkçeye geçilir; seçim kaydedilir ve yeni eklenti örnekleri son seçimle açılır. Demo sayfasında da aynı düğmeler var. Yeni dil eklemek için `core/JackCore.h` içindeki `Lang` ve `Tx` yapılarına bakın (tüm Jack sözleri tek yerde).
+
 ## Klasörler
 | Yol | İçerik |
 |---|---|

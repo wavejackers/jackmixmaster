@@ -43,6 +43,10 @@ public:
     bool signalPresent() const { return inHoldDb.load() > -60.0f; }
     float getInDb() const { return inHoldDb.load(); }
 
+    // arayüz dili (varsayılan İngilizce); son seçim bu bilgisayarda yeni örnekler için hatırlanır
+    jack::Lang getLanguage() const;
+    void setLanguage (jack::Lang l);
+
     // Jack'in önerisini gerçek parametrelere yazar (host otomasyonuna da bildirir)
     void applyPatchToParams (const jack::Patch& patch);
     void setParamReal (const char* id, float realValue);

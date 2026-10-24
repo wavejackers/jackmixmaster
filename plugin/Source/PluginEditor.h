@@ -54,6 +54,8 @@ private:
     void setupKnob (juce::Slider& s, juce::Label& l, const juce::String& text, const juce::String& suffix, int decimals);
     void styleChoiceButton (juce::TextButton& b);
     void updateAdvancedVisibility();
+    void applyLanguage();
+    juce::String tx (const jack::Tx& t) const { return juce::String::fromUTF8 (jack::pick (lang, t)); }
 
     JackAudioProcessor& proc;
 
@@ -64,6 +66,8 @@ private:
     juce::Label feelLabel;
     juce::TextButton applyBtn, noBtn;
     juce::ToggleButton advancedToggle, autoMakeupToggle, progRelToggle;
+    juce::TextButton langBtns[static_cast<int> (jack::Lang::Count)];
+    jack::Lang lang = jack::Lang::En;
 
     juce::Slider amountSlider, mixSlider, trimSlider;
     juce::Slider thresholdSlider, ratioSlider, attackSlider, releaseSlider, kneeSlider, hpfSlider, makeupSlider;
