@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   core-tests:
     name: DSP çekirdek testleri
@@ -47,3 +50,25 @@ jobs:
           name: JackCompressor-VST3-${{ matrix.os }}
           path: build/JackCompressor_artefacts/Release/VST3
           if-no-files-found: error
+
+  release:
+    name: Release sayfasına koy
+    needs: build-vst3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+      - name: Zip'le
+        run: |
+          cd out
+          for d in */; do n="${d%/}"; (cd "$n" && zip -qr "../$n.zip" .); done
+          ls -la
+      - name: Release oluştur
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="build-${{ github.run_number }}"
+          gh release create "$tag" out/*.zip --repo "${{ github.repository }}" \
+            --title "Jack Compressor derleme #${{ github.run_number }}" \
+            --notes "Windows ve macOS VST3. İmzasız, DAW'da denenmedi."
