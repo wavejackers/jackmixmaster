@@ -39,8 +39,8 @@ Yerelde: `cmake -S plugin -B build -DCMAKE_BUILD_TYPE=Release && cmake --build b
 | DSP çekirdeği (C++) | **Test edildi:** 42/42 geçti, ASan/UBSan temiz |
 | Öneri motoru kuralları | **Test edildi:** her kural için tetikleme ve çözüm ölçüldü |
 | JS demo ↔ C++ çekirdek | **Ölçüldü:** aynı sinyalde GR farkı ≤ 0,01 dB |
-| JUCE eklenti kaynağı (kollu Jack dahil) | Yalnızca sözdizimi denetimi (`g++ -fsyntax-only`). **Bağlanmadı, derlenip çalıştırılmadı.** |
-| VST3 ikilisi | **Henüz üretilmedi.** GitHub Actions iş akışı yazıldı ama hiç çalıştırılmadı |
+| JUCE eklenti kaynağı (kollu Jack dahil) | **GitHub Actions'ta Windows ve macOS'ta derlendi (24 Ekim 2026).** Çalıştırılıp dinlenmedi. |
+| VST3 ikilisi | **Üretildi** (Actions > Artifacts). Ses işleme ve arayüz gerçek bir DAW'da henüz denenmedi |
 | FL Studio ve diğer DAW'lar | **Test edilmedi** |
 | AU / AAX / CLAP | Yok (şimdilik yalnızca VST3) |
 
